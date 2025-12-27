@@ -1004,6 +1004,34 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{year} Spending Analysis</title>
+    <script>
+        // Theme toggle - runs immediately to prevent flash
+        (function() {{
+            const saved = localStorage.getItem('tally-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            document.documentElement.dataset.theme = theme;
+        }})();
+
+        function toggleTheme() {{
+            const html = document.documentElement;
+            const current = html.dataset.theme || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.dataset.theme = next;
+            localStorage.setItem('tally-theme', next);
+            updateThemeIcon(next);
+        }}
+
+        function updateThemeIcon(theme) {{
+            const icon = document.querySelector('.theme-icon');
+            if (icon) icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+        }}
+
+        // Update icon when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {{
+            updateThemeIcon(document.documentElement.dataset.theme || 'dark');
+        }});
+    </script>
     <script type="module">
         // Load Transformers.js for semantic search
         import {{ pipeline }} from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
@@ -1034,6 +1062,117 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
     </script>
     <style>
+        /* Theme CSS Variables */
+        :root {{
+            /* Backgrounds */
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+            --bg-card: rgba(255,255,255,0.05);
+            --bg-card-hover: rgba(255,255,255,0.08);
+            --bg-input: rgba(255,255,255,0.05);
+            --bg-input-focus: rgba(255,255,255,0.08);
+            --bg-table: rgba(255,255,255,0.03);
+            --bg-table-header: rgba(255,255,255,0.05);
+            --bg-table-hover: rgba(255,255,255,0.03);
+            --bg-tooltip: rgba(0,0,0,0.9);
+            --bg-txn-row: rgba(0,0,0,0.2);
+            --bg-scrollbar-track: rgba(255,255,255,0.05);
+            --bg-scrollbar-thumb: rgba(255,255,255,0.2);
+            --bg-scrollbar-thumb-hover: rgba(255,255,255,0.3);
+            --bg-highlight: rgba(255, 230, 0, 0.3);
+            --bg-code: rgba(255,255,255,0.08);
+            --bg-help: rgba(255,255,255,0.02);
+            --bg-location: #444;
+
+            /* Text */
+            --text-primary: #e8e8e8;
+            --text-secondary: #888;
+            --text-muted: #666;
+            --text-dim: #555;
+            --text-light: #999;
+            --text-lighter: #aaa;
+            --text-tooltip: #fff;
+
+            /* Borders */
+            --border-light: rgba(255,255,255,0.1);
+            --border-medium: rgba(255,255,255,0.2);
+            --border-strong: rgba(255,255,255,0.3);
+            --border-scrolled: #333;
+            --border-help: rgba(255,255,255,0.08);
+            --border-table: rgba(255,255,255,0.05);
+
+            /* Shadows */
+            --shadow-card: rgba(0,0,0,0.3);
+            --shadow-scrolled: rgba(0,0,0,0.4);
+
+            /* Accents (same for both themes) */
+            --accent-blue: #4facfe;
+            --accent-blue-light: #00f2fe;
+            --accent-cyan: #4dffd2;
+            --accent-orange: #ffa94d;
+            --accent-yellow: #f5af19;
+            --accent-pink: #f093fb;
+            --accent-pink-dark: #fa709a;
+            --accent-red: #ff6b6b;
+
+            /* Special */
+            --bg-amex: #006fcf;
+            --bg-boa: #c41230;
+            --bg-home: #2d5016;
+            --text-home: #90EE90;
+            --bg-intl: #8B4513;
+            --text-intl: #FFD700;
+        }}
+
+        /* Light Theme */
+        [data-theme="light"] {{
+            --bg-gradient-start: #f0f4f8;
+            --bg-gradient-end: #ffffff;
+            --bg-card: rgba(0,0,0,0.03);
+            --bg-card-hover: rgba(0,0,0,0.06);
+            --bg-input: rgba(0,0,0,0.03);
+            --bg-input-focus: rgba(0,0,0,0.05);
+            --bg-table: rgba(0,0,0,0.02);
+            --bg-table-header: rgba(0,0,0,0.04);
+            --bg-table-hover: rgba(0,0,0,0.03);
+            --bg-tooltip: rgba(30,30,30,0.95);
+            --bg-txn-row: rgba(0,0,0,0.04);
+            --bg-scrollbar-track: rgba(0,0,0,0.05);
+            --bg-scrollbar-thumb: rgba(0,0,0,0.15);
+            --bg-scrollbar-thumb-hover: rgba(0,0,0,0.25);
+            --bg-highlight: rgba(255, 200, 0, 0.3);
+            --bg-code: rgba(0,0,0,0.06);
+            --bg-help: rgba(0,0,0,0.02);
+            --bg-location: #666;
+
+            --text-primary: #1a1a2e;
+            --text-secondary: #555;
+            --text-muted: #777;
+            --text-dim: #888;
+            --text-light: #666;
+            --text-lighter: #555;
+            --text-tooltip: #fff;
+
+            --border-light: rgba(0,0,0,0.08);
+            --border-medium: rgba(0,0,0,0.12);
+            --border-strong: rgba(0,0,0,0.2);
+            --border-scrolled: #ddd;
+            --border-help: rgba(0,0,0,0.08);
+            --border-table: rgba(0,0,0,0.05);
+
+            --shadow-card: rgba(0,0,0,0.1);
+            --shadow-scrolled: rgba(0,0,0,0.15);
+
+            /* Darker accent colors for better contrast on light backgrounds */
+            --accent-blue: #2563eb;
+            --accent-cyan: #0d9488;
+            --accent-orange: #ea580c;
+            --accent-yellow: #ca8a04;
+            --accent-pink: #c026d3;
+            --accent-pink-dark: #be185d;
+            --accent-red: #dc2626;
+        }}
+
         * {{
             margin: 0;
             padding: 0;
@@ -1041,8 +1180,8 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #e8e8e8;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-primary);
             min-height: 100vh;
             padding: 2rem;
         }}
@@ -1054,19 +1193,41 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             text-align: center;
             margin-bottom: 2rem;
             padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid var(--border-light);
+            position: relative;
         }}
         h1 {{
             font-size: 2.5rem;
             font-weight: 300;
             margin-bottom: 0.5rem;
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-blue-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }}
         .subtitle {{
-            color: #888;
+            color: var(--text-secondary);
             font-size: 0.9rem;
+        }}
+        .theme-toggle {{
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-medium);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .theme-toggle:hover {{
+            background: var(--bg-card-hover);
+            transform: scale(1.1);
         }}
         .search-box {{
             margin: 1.5rem 0;
@@ -1074,7 +1235,7 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             position: sticky;
             top: 0;
             z-index: 100;
-            background: #1a1a2e;
+            background: var(--bg-gradient-start);
             padding: 12px 20px;
             margin: 0 -20px 1.5rem -20px;
             border-bottom: 1px solid transparent;
@@ -1082,27 +1243,27 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             width: calc(100% + 40px);
         }}
         .search-box.scrolled {{
-            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
-            border-bottom-color: #333;
+            box-shadow: 0 2px 12px var(--shadow-scrolled);
+            border-bottom-color: var(--border-scrolled);
         }}
         .search-box input {{
             width: 100%;
             max-width: 500px;
             padding: 0.75rem 1rem;
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(255,255,255,0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--border-medium);
+            background: var(--bg-input);
+            color: var(--text-primary);
             font-size: 1rem;
             outline: none;
             transition: all 0.2s;
         }}
         .search-box input:focus {{
-            border-color: #4facfe;
-            background: rgba(255,255,255,0.08);
+            border-color: var(--accent-blue);
+            background: var(--bg-input-focus);
         }}
         .search-box input::placeholder {{
-            color: #666;
+            color: var(--text-muted);
         }}
         .autocomplete-container {{
             position: relative;
@@ -1117,8 +1278,8 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             transform: translateX(-50%);
             width: 100%;
             max-width: 500px;
-            background: #1a1a2e;
-            border: 1px solid rgba(255,255,255,0.2);
+            background: var(--bg-gradient-start);
+            border: 1px solid var(--border-medium);
             border-top: none;
             border-radius: 0 0 8px 8px;
             max-height: 300px;
@@ -1133,8 +1294,8 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             padding: 0.6rem 1rem;
             cursor: pointer;
             text-align: left;
-            color: #e8e8e8;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-light);
         }}
         .autocomplete-item:last-child {{
             border-bottom: none;
@@ -1144,21 +1305,21 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
         .autocomplete-item .type {{
             font-size: 0.75rem;
-            color: #888;
+            color: var(--text-secondary);
             margin-left: 0.5rem;
         }}
         .autocomplete-item .type.category {{
-            color: #4facfe;
+            color: var(--accent-blue);
         }}
         .autocomplete-item .type.merchant {{
-            color: #4dffd2;
+            color: var(--accent-cyan);
         }}
         .autocomplete-item .type.location {{
-            color: #ffa94d;
+            color: var(--accent-orange);
         }}
         .autocomplete-item .score {{
             font-size: 0.7rem;
-            color: #f5af19;
+            color: var(--accent-yellow);
             margin-left: 0.5rem;
             opacity: 0.8;
         }}
@@ -1185,13 +1346,13 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
         .filter-chip.include {{
             background: rgba(79, 172, 254, 0.2);
-            border-color: #4facfe;
-            color: #4facfe;
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
         }}
         .filter-chip.exclude {{
             background: rgba(255, 107, 107, 0.2);
-            border-color: #ff6b6b;
-            color: #ff6b6b;
+            border-color: var(--accent-red);
+            color: var(--accent-red);
             text-decoration: line-through;
         }}
         .filter-chip .chip-type {{
@@ -1208,21 +1369,21 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         .filter-chip .chip-remove:hover {{
             opacity: 1;
         }}
-        .filter-chip.category {{ border-color: #4facfe; }}
-        .filter-chip.category.include {{ background: rgba(79, 172, 254, 0.2); color: #4facfe; }}
-        .filter-chip.merchant {{ border-color: #4dffd2; }}
-        .filter-chip.merchant.include {{ background: rgba(77, 255, 210, 0.2); color: #4dffd2; }}
-        .filter-chip.location {{ border-color: #ffa94d; }}
-        .filter-chip.location.include {{ background: rgba(255, 169, 77, 0.2); color: #ffa94d; }}
+        .filter-chip.category {{ border-color: var(--accent-blue); }}
+        .filter-chip.category.include {{ background: rgba(79, 172, 254, 0.2); color: var(--accent-blue); }}
+        .filter-chip.merchant {{ border-color: var(--accent-cyan); }}
+        .filter-chip.merchant.include {{ background: rgba(77, 255, 210, 0.2); color: var(--accent-cyan); }}
+        .filter-chip.location {{ border-color: var(--accent-orange); }}
+        .filter-chip.location.include {{ background: rgba(255, 169, 77, 0.2); color: var(--accent-orange); }}
         .filter-chip.category.exclude, .filter-chip.merchant.exclude, .filter-chip.location.exclude {{
             background: rgba(255, 107, 107, 0.15);
-            border-color: #ff6b6b;
-            color: #ff6b6b;
+            border-color: var(--accent-red);
+            color: var(--accent-red);
         }}
         .clear-all-btn {{
             background: transparent;
-            border: 1px solid rgba(255,255,255,0.3);
-            color: #888;
+            border: 1px solid var(--border-strong);
+            color: var(--text-secondary);
             padding: 0.25rem 0.75rem;
             border-radius: 1rem;
             font-size: 0.75rem;
@@ -1231,8 +1392,8 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
         .clear-all-btn:hover {{
             background: rgba(255, 107, 107, 0.2);
-            border-color: #ff6b6b;
-            color: #ff6b6b;
+            border-color: var(--accent-red);
+            color: var(--accent-red);
         }}
         .summary-grid {{
             display: grid;
@@ -1241,23 +1402,23 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             margin-bottom: 2rem;
         }}
         .card {{
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-card);
             border-radius: 16px;
             padding: 1.5rem;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--border-light);
             transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
         }}
         .card:hover {{
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 30px var(--shadow-card);
         }}
         .card h2 {{
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #888;
+            color: var(--text-secondary);
             margin-bottom: 1rem;
         }}
         .card .amount {{
@@ -1266,16 +1427,16 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
         .card .label {{
             font-size: 0.9rem;
-            color: #666;
+            color: var(--text-muted);
             margin-top: 0.25rem;
         }}
-        .card.monthly .amount {{ color: #4facfe; }}
-        .card.non-recurring .amount {{ color: #f093fb; }}
-        .card.total .amount {{ color: #4dffd2; }}
+        .card.monthly .amount {{ color: var(--accent-blue); }}
+        .card.non-recurring .amount {{ color: var(--accent-pink); }}
+        .card.total .amount {{ color: var(--accent-cyan); }}
         .breakdown {{
             margin-top: 1rem;
             padding-top: 1rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid var(--border-light);
         }}
         .breakdown-item {{
             display: flex;
@@ -1283,9 +1444,9 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             padding: 0.5rem 0;
             font-size: 0.95rem;
         }}
-        .breakdown-item .name {{ color: #aaa; }}
+        .breakdown-item .name {{ color: var(--text-lighter); }}
         .breakdown-item .value {{ font-weight: 500; }}
-        .breakdown-item .breakdown-pct {{ color: #666; font-size: 0.85rem; }}
+        .breakdown-item .breakdown-pct {{ color: var(--text-muted); font-size: 0.85rem; }}
         section {{
             margin-bottom: 1rem;
         }}
@@ -1295,13 +1456,13 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             justify-content: space-between;
             cursor: pointer;
             padding: 1rem;
-            background: rgba(255,255,255,0.03);
+            background: var(--bg-table);
             border-radius: 12px;
             margin-bottom: 0.5rem;
             transition: background 0.2s;
         }}
         .section-header:hover {{
-            background: rgba(255,255,255,0.06);
+            background: var(--bg-card-hover);
         }}
         .section-header h2 {{
             font-size: 1.25rem;
@@ -1314,7 +1475,7 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         .section-header .toggle {{
             font-size: 1.5rem;
             transition: transform 0.3s;
-            color: #666;
+            color: var(--text-muted);
         }}
         .section-header.collapsed .toggle {{
             transform: rotate(-90deg);
@@ -1322,17 +1483,17 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         .section-header .section-total {{
             font-family: 'SF Mono', Monaco, monospace;
             font-size: 1.1rem;
-            color: #888;
+            color: var(--text-secondary);
         }}
         .section-header .section-pct {{
             font-size: 0.9rem;
-            color: #666;
+            color: var(--text-muted);
         }}
-        section.monthly-section .section-header h2 {{ color: #4facfe; }}
-        section.annual-section .section-header h2 {{ color: #f5af19; }}
-        section.travel-section .section-header h2 {{ color: #f093fb; }}
-        section.oneoff-section .section-header h2 {{ color: #fa709a; }}
-        section.variable-section .section-header h2 {{ color: #4dffd2; }}
+        section.monthly-section .section-header h2 {{ color: var(--accent-blue); }}
+        section.annual-section .section-header h2 {{ color: var(--accent-yellow); }}
+        section.travel-section .section-header h2 {{ color: var(--accent-pink); }}
+        section.oneoff-section .section-header h2 {{ color: var(--accent-pink-dark); }}
+        section.variable-section .section-header h2 {{ color: var(--accent-cyan); }}
         .section-content {{
             overflow: hidden;
             transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
@@ -1352,61 +1513,61 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             width: 8px;
         }}
         .table-wrapper::-webkit-scrollbar-track {{
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-scrollbar-track);
             border-radius: 4px;
         }}
         .table-wrapper::-webkit-scrollbar-thumb {{
-            background: rgba(255,255,255,0.2);
+            background: var(--bg-scrollbar-thumb);
             border-radius: 4px;
         }}
         .table-wrapper::-webkit-scrollbar-thumb:hover {{
-            background: rgba(255,255,255,0.3);
+            background: var(--bg-scrollbar-thumb-hover);
         }}
         table {{
             width: 100%;
             border-collapse: collapse;
-            background: rgba(255,255,255,0.03);
+            background: var(--bg-table);
             border-radius: 12px;
             overflow: hidden;
         }}
         th {{
             text-align: left;
             padding: 1rem;
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-table-header);
             font-weight: 500;
             font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #888;
+            color: var(--text-secondary);
             cursor: pointer;
             user-select: none;
             transition: background 0.2s;
         }}
         th:hover {{
-            background: rgba(255,255,255,0.08);
+            background: var(--bg-card-hover);
         }}
-        th.sorted-asc::after {{ content: ' ↑'; color: #4facfe; }}
-        th.sorted-desc::after {{ content: ' ↓'; color: #4facfe; }}
+        th.sorted-asc::after {{ content: ' ↑'; color: var(--accent-blue); }}
+        th.sorted-desc::after {{ content: ' ↓'; color: var(--accent-blue); }}
         th:last-child, td:last-child {{ text-align: right; }}
         td {{
             padding: 0.85rem 1rem;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            border-top: 1px solid var(--border-table);
         }}
         tr:hover td {{
-            background: rgba(255,255,255,0.03);
+            background: var(--bg-table-hover);
         }}
         tr.hidden {{
             display: none;
         }}
         .merchant {{ font-weight: 500; }}
-        .category {{ color: #888; font-size: 0.9rem; }}
+        .category {{ color: var(--text-secondary); font-size: 0.9rem; }}
         .money {{ font-family: 'SF Mono', Monaco, monospace; }}
-        .pct {{ font-family: 'SF Mono', Monaco, monospace; color: #888; font-size: 0.85rem; }}
-        .filter-pct {{ font-size: 0.5em; color: #888; font-weight: normal; }}
+        .pct {{ font-family: 'SF Mono', Monaco, monospace; color: var(--text-secondary); font-size: 0.85rem; }}
+        .filter-pct {{ font-size: 0.5em; color: var(--text-secondary); font-weight: normal; }}
         .total-row td {{
             font-weight: 600;
-            background: rgba(255,255,255,0.05);
-            border-top: 2px solid rgba(255,255,255,0.1);
+            background: var(--bg-table-header);
+            border-top: 2px solid var(--border-light);
         }}
         .badge {{
             display: inline-block;
@@ -1415,8 +1576,8 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             font-size: 0.75rem;
             font-weight: 500;
         }}
-        .badge.avg {{ background: rgba(79, 172, 254, 0.2); color: #4facfe; }}
-        .badge.div {{ background: rgba(240, 147, 251, 0.2); color: #f093fb; }}
+        .badge.avg {{ background: rgba(79, 172, 254, 0.2); color: var(--accent-blue); }}
+        .badge.div {{ background: rgba(240, 147, 251, 0.2); color: var(--accent-pink); }}
         /* Tooltips */
         [data-tooltip] {{
             position: relative;
@@ -1428,8 +1589,8 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             bottom: 125%;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: #fff;
+            background: var(--bg-tooltip);
+            color: var(--text-tooltip);
             padding: 0.5rem 0.75rem;
             border-radius: 6px;
             font-size: 0.75rem;
@@ -1444,13 +1605,13 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             left: 50%;
             transform: translateX(-50%);
             border: 6px solid transparent;
-            border-top-color: rgba(0, 0, 0, 0.9);
+            border-top-color: var(--bg-tooltip);
             z-index: 1000;
         }}
         th[data-tooltip] {{ cursor: pointer; }}
         .highlight {{
-            background: rgba(255, 230, 0, 0.3);
-            color: #fff;
+            background: var(--bg-highlight);
+            color: var(--text-primary);
             padding: 0 2px;
             border-radius: 2px;
         }}
@@ -1459,19 +1620,19 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             cursor: pointer;
         }}
         .merchant-row:hover {{
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-card);
         }}
         .merchant-row .chevron {{
             display: inline-block;
             width: 1em;
             transition: transform 0.2s;
-            color: #666;
+            color: var(--text-muted);
         }}
         .merchant-row.expanded .chevron {{
             transform: rotate(90deg);
         }}
         .txn-row {{
-            background: rgba(0, 0, 0, 0.2);
+            background: var(--bg-txn-row);
         }}
         .txn-row.hidden {{
             display: none;
@@ -1479,7 +1640,7 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         .txn-row td {{
             padding: 0.3rem 0.5rem;
             font-size: 0.85rem;
-            color: #999;
+            color: var(--text-light);
             border-bottom: none;
         }}
         .txn-row td:first-child {{
@@ -1491,7 +1652,7 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             gap: 0.75rem;
         }}
         .txn-date {{
-            color: #666;
+            color: var(--text-muted);
             min-width: 3rem;
         }}
         .txn-desc {{
@@ -1501,7 +1662,7 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             text-overflow: ellipsis;
         }}
         .txn-amount {{
-            color: #f093fb;
+            color: var(--accent-pink);
             font-family: monospace;
             min-width: 5rem;
             text-align: right;
@@ -1514,11 +1675,11 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             font-weight: bold;
         }}
         .txn-source.amex {{
-            background: #006fcf;
+            background: var(--bg-amex);
             color: white;
         }}
         .txn-source.boa {{
-            background: #c41230;
+            background: var(--bg-boa);
             color: white;
         }}
         .txn-location {{
@@ -1527,16 +1688,16 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             border-radius: 3px;
             margin-left: 0.5rem;
             font-weight: bold;
-            background: #444;
+            background: var(--bg-location);
             color: #fff;
         }}
         .txn-location.home {{
-            background: #2d5016;
-            color: #90EE90;
+            background: var(--bg-home);
+            color: var(--text-home);
         }}
         .txn-location.intl {{
-            background: #8B4513;
-            color: #FFD700;
+            background: var(--bg-intl);
+            color: var(--text-intl);
         }}
         .chart-container {{
             display: flex;
@@ -1561,11 +1722,11 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         .donut-chart .center-text .amount {{
             font-size: 1.5rem;
             font-weight: 600;
-            color: #fff;
+            color: var(--text-primary);
         }}
         .donut-chart .center-text .label {{
             font-size: 0.75rem;
-            color: #888;
+            color: var(--text-secondary);
         }}
         .legend {{
             display: flex;
@@ -1579,14 +1740,14 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             align-items: center;
             gap: 0.5rem;
             font-size: 0.85rem;
-            color: #aaa;
+            color: var(--text-lighter);
             cursor: pointer;
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
             transition: background 0.2s;
         }}
         .legend-item:hover {{
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-card);
         }}
         .legend-item .dot {{
             width: 12px;
@@ -1596,7 +1757,7 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         footer {{
             text-align: center;
             padding-top: 2rem;
-            color: #555;
+            color: var(--text-dim);
             font-size: 0.85rem;
         }}
         @keyframes fadeIn {{
@@ -1613,14 +1774,14 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
 
         /* Click-to-filter on cells */
         .clickable {{ cursor: pointer; }}
-        .clickable:hover {{ text-decoration: underline; color: #60a5fa; }}
+        .clickable:hover {{ text-decoration: underline; color: var(--accent-blue); }}
         .clickable .chevron {{ text-decoration: none !important; display: inline-block; }}
-        .location-badge.clickable:hover {{ background: #3b82f6; }}
+        .location-badge.clickable:hover {{ background: var(--accent-blue); }}
 
         /* Help/Guide section - Compact inline design */
         .help-section {{
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: var(--bg-help);
+            border: 1px solid var(--border-help);
             border-radius: 12px;
             margin-bottom: 1.5rem;
         }}
@@ -1633,16 +1794,16 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             transition: background 0.2s;
         }}
         .help-section-header:hover {{
-            background: rgba(255,255,255,0.03);
+            background: var(--bg-table);
         }}
         .help-section-header h3 {{
             font-size: 0.8rem;
             font-weight: 500;
-            color: #888;
+            color: var(--text-secondary);
             margin: 0;
         }}
         .help-section-header .toggle {{
-            color: #666;
+            color: var(--text-muted);
             font-size: 0.7rem;
             transition: transform 0.2s;
         }}
@@ -1651,19 +1812,19 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         }}
         .help-section-content {{
             padding: 0.75rem 1rem 1rem;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            border-top: 1px solid var(--border-table);
             display: grid;
             grid-template-columns: auto 1fr;
             gap: 0.4rem 1rem;
             font-size: 0.75rem;
-            color: #888;
+            color: var(--text-secondary);
             align-items: baseline;
         }}
         .help-section.collapsed .help-section-content {{
             display: none;
         }}
         .help-section-content .label {{
-            color: #666;
+            color: var(--text-muted);
             font-weight: 500;
             white-space: nowrap;
         }}
@@ -1674,14 +1835,14 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
             margin-right: 0.15rem;
         }}
         .help-section-content code {{
-            background: rgba(255,255,255,0.08);
+            background: var(--bg-code);
             padding: 0.1rem 0.35rem;
             border-radius: 3px;
             font-size: 0.7rem;
-            color: #4facfe;
+            color: var(--accent-blue);
         }}
         .help-section-content strong {{
-            color: #aaa;
+            color: var(--text-lighter);
             font-weight: 500;
         }}
     </style>
@@ -1691,6 +1852,9 @@ def write_summary_file(stats, filepath, year=2025, home_locations=None):
         <header>
             <h1>{year} Spending Analysis</h1>
             <p class="subtitle">Generated {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span class="theme-icon"></span>
+            </button>
         </header>
         <div class="search-box">
             <div class="autocomplete-container">
