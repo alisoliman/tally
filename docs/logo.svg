@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Tally marks - 4 vertical lines with diagonal strike -->
+  <g stroke="#4ade80" stroke-width="8" stroke-linecap="round" fill="none">
+    <!-- 4 vertical lines -->
+    <line x1="20" y1="20" x2="20" y2="80"/>
+    <line x1="36" y1="20" x2="36" y2="80"/>
+    <line x1="52" y1="20" x2="52" y2="80"/>
+    <line x1="68" y1="20" x2="68" y2="80"/>
+    <!-- Diagonal strike-through (the 5th tally) -->
+    <line x1="12" y1="70" x2="76" y2="30"/>
+  </g>
+</svg>

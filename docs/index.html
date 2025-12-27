@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tally - Let AI Classify Your Transactions</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
@@ -38,6 +39,14 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 2.5rem;
+            height: 2.5rem;
         }
 
         .tagline {
@@ -379,7 +388,7 @@
 <body>
     <div class="container">
         <div class="hero">
-            <div class="logo">tally</div>
+            <div class="logo"><img src="logo.svg" alt="Tally logo" class="logo-icon">tally</div>
             <p class="tagline">Let AI classify your transactions. LLM-powered spending categorization.</p>
             <span class="badge">Built for AI Agents</span>
         </div>
