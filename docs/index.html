@@ -58,6 +58,67 @@
             border-radius: 20px;
         }
 
+        .story-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .story-section .problem,
+        .story-section .solution {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .story-section .solution {
+            background: rgba(74, 222, 128, 0.05);
+            border-color: rgba(74, 222, 128, 0.2);
+        }
+
+        .story-section h2 {
+            margin-bottom: 0.75rem;
+        }
+
+        .story-section p {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .story-section p:last-child {
+            margin-bottom: 0;
+        }
+
+        .story-section em {
+            color: #4ade80;
+            font-style: normal;
+        }
+
+        .transaction-examples,
+        .example-rules {
+            background: #0d0d0d;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .transaction-examples code,
+        .example-rules code {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.6);
+            padding: 0.2rem 0;
+        }
+
+        .example-rules code {
+            color: #4ade80;
+            font-size: 0.75rem;
+        }
+
         .agent-callout {
             background: rgba(34, 197, 94, 0.1);
             border: 1px solid rgba(34, 197, 94, 0.2);
@@ -295,6 +356,7 @@
             .container { padding: 2rem 1.5rem; }
             .logo { font-size: 2rem; }
             .tagline { font-size: 1rem; }
+            .story-section { grid-template-columns: 1fr; }
             .features { grid-template-columns: 1fr; }
             .command { flex-direction: column; gap: 0.25rem; }
             .command-name { min-width: auto; }
@@ -309,9 +371,25 @@
             <span class="badge">Built for AI Agents</span>
         </div>
 
-        <div class="agent-callout">
-            <h3>🤖 Designed for AI Assistants</h3>
-            <p>Tally outputs structured JSON for LLMs. Point Claude, GPT, or any AI at your transactions—it understands merchant codes and writes the categorization rules for you.</p>
+        <div class="story-section">
+            <div class="problem">
+                <h2>The Problem</h2>
+                <div class="transaction-examples">
+                    <code>WHOLEFDS MKT 10847 SEATTLE WA</code>
+                    <code>AMZN MKTP US*2K7X9</code>
+                    <code>SQ *JOES COFFEE SEATTLE</code>
+                </div>
+                <p>Bank transactions are cryptic. Bank categories say "Shopping" when you want "Kids > Clothing" vs "Home > Furniture". They lump restaurants together but you need "Coffee" separate from "Fast Food".</p>
+            </div>
+            <div class="solution">
+                <h2>The Solution</h2>
+                <p>LLMs have read the internet. They <em>know</em> what "WHOLEFDS MKT" is. They understand "SQ *" means Square. Tell them your rules in plain English:</p>
+                <div class="example-rules">
+                    <code>"ZELLE to Sarah is babysitting → Childcare"</code>
+                    <code>"COSTCO with GAS is fuel, otherwise groceries"</code>
+                </div>
+                <p>The AI writes pattern-matching rules to a CSV. No database. No CMS. Just a text file you control.</p>
+            </div>
         </div>
 
         <div class="install-section">
