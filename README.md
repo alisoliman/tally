@@ -2,16 +2,16 @@
 
 **Let AI classify your transactions.** LLM-powered spending categorization.
 
-👉 **[Website](https://davidfowl.github.io/tally/)** · **[Releases](https://github.com/davidfowl/tally/releases)**
+👉 **[Website](https://tallyai.money)** · **[Releases](https://github.com/davidfowl/tally/releases)**
 
 ## Install
 
 ```bash
-# Linux/macOS (installs to ~/.tally)
-curl -fsSL https://raw.githubusercontent.com/davidfowl/tally/main/install.sh | bash
+# Linux/macOS
+curl -fsSL https://tallyai.money/install.sh | bash
 
-# Windows PowerShell (installs to %LOCALAPPDATA%\tally)
-irm https://raw.githubusercontent.com/davidfowl/tally/main/install.ps1 | iex
+# Windows PowerShell
+irm https://tallyai.money/install.ps1 | iex
 
 # With uv
 uv tool install git+https://github.com/davidfowl/tally
