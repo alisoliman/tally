@@ -31,6 +31,9 @@ tally = "tally.cli:main"
 dev = [
     "pytest>=7.0",
 ]
+build = [
+    "pyinstaller>=6.0",
+]
 
 [build-system]
 requires = ["hatchling"]

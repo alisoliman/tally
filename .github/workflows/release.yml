@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: tally
+            asset_name: tally-linux-amd64
+          - os: macos-latest
+            artifact_name: tally
+            asset_name: tally-macos-amd64
+          - os: windows-latest
+            artifact_name: tally.exe
+            asset_name: tally-windows-amd64.exe
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for commit count
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --extra build
+
+      - name: Inject version info
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "VERSION = \"0.1.${COMMIT_COUNT}\"" > src/tally/_version.py
+          echo "GIT_SHA = \"${{ github.sha }}\"" >> src/tally/_version.py
+          cat src/tally/_version.py
+        shell: bash
+
+      - name: Build executable
+        run: uv run pyinstaller --onefile src/tally/__main__.py --name tally
+
+      - name: Rename artifact
+        run: |
+          mv dist/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "version=0.1.${COMMIT_COUNT}" >> $GITHUB_OUTPUT
+          echo "Version: 0.1.${COMMIT_COUNT}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Tally v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/tally-linux-amd64/tally-linux-amd64
+            artifacts/tally-macos-amd64/tally-macos-amd64
+            artifacts/tally-windows-amd64.exe/tally-windows-amd64.exe
+          body: |
+            ## Tally v${{ steps.version.outputs.version }}
+
+            Standalone executables for budget transaction analysis.
+
+            ### Downloads
+            - **Linux**: `tally-linux-amd64`
+            - **macOS**: `tally-macos-amd64`
+            - **Windows**: `tally-windows-amd64.exe`
+
+            ### Usage
+            ```bash
+            # Make executable (Linux/macOS)
+            chmod +x tally-*
+
+            # Run
+            ./tally-linux-amd64 version
+            ./tally-linux-amd64 init ./my-budget
+            ./tally-linux-amd64 run
+            ```

@@ -12,6 +12,7 @@ import argparse
 import os
 import sys
 
+from ._version import VERSION, GIT_SHA
 from .config_loader import load_config
 from .merchant_utils import get_all_rules, diagnose_rules
 from .analyzer import (
@@ -1611,6 +1612,7 @@ Commands:
   inspect <file>   Show CSV structure and suggest format string
   discover [config]  Find unknown merchants and suggest rules
   diag [config]    Show diagnostic info about config and rules
+  version          Show version information
 
 Examples:
   tally init                 Initialize in current directory
@@ -1742,6 +1744,13 @@ Examples:
         help='Output format: text (human readable), json (for agents)'
     )
 
+    # version subcommand
+    subparsers.add_parser(
+        'version',
+        help='Show version information',
+        description='Display tally version and build information.'
+    )
+
     args = parser.parse_args()
 
     # If no command specified, show help
@@ -1760,6 +1769,9 @@ Examples:
         cmd_discover(args)
     elif args.command == 'diag':
         cmd_diag(args)
+    elif args.command == 'version':
+        sha_display = GIT_SHA[:8] if GIT_SHA != 'unknown' else 'unknown'
+        print(f"tally {VERSION} ({sha_display})")
 
 
 if __name__ == '__main__':
