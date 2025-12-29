@@ -71,23 +71,34 @@ jobs:
 
       # Delete old dev release and create new one
       - name: Create dev release
-        run: |
-          gh release delete dev --cleanup-tag --yes || true
-          gh release create dev \
-            --title "Development Build (${{ needs.prepare.outputs.version }}-dev)" \
-            --notes "Latest build from main branch
-
-**Version:** ${{ needs.prepare.outputs.version }}-dev
-**Commit:** ${{ github.sha }}
-
-Install: \`curl -fsSL https://tallyai.money/install.sh | bash -s -- --prerelease\`" \
-            --prerelease \
-            dev-artifacts/*/*.zip
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh release delete dev --cleanup-tag --yes || true
+
+          cat > notes.md << EOF
+          Latest build from main branch
+
+          **Version:** ${VERSION}-dev
+          **Commit:** ${SHA}
+
+          Install: \`curl -fsSL https://tallyai.money/install.sh | bash -s -- --prerelease\`
+          EOF
+
+          gh release create dev \
+            --title "Development Build (${VERSION}-dev)" \
+            --notes-file notes.md \
+            --prerelease \
+            dev-artifacts/*/*.zip
 
       # Delete old draft releases and create new one
       - name: Create draft RC release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          SHA: ${{ github.sha }}
         run: |
           # Delete any existing drafts
           for tag in $(gh release list --json tagName,isDraft -q '.[] | select(.isDraft) | .tagName'); do
@@ -95,14 +106,16 @@ Install: \`curl -fsSL https://tallyai.money/install.sh | bash -s -- --prerelease
             gh release delete "$tag" --yes || true
           done
 
-          # Create new draft
-          gh release create v${{ needs.prepare.outputs.version }} \
-            --title "Tally v${{ needs.prepare.outputs.version }}" \
-            --notes "Release candidate - pending publish
+          cat > notes.md << EOF
+          Release candidate - pending publish
 
-**Commit:** ${{ github.sha }}
-**E2E Status:** Pending..." \
+          **Commit:** ${SHA}
+          **E2E Status:** Pending...
+          EOF
+
+          # Create new draft
+          gh release create "v${VERSION}" \
+            --title "Tally v${VERSION}" \
+            --notes-file notes.md \
             --draft \
             rc-artifacts/*/*.zip
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
