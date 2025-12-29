@@ -1207,6 +1207,27 @@ NEXT STEPS
    tally run
 
 ================================================================================
+🤖 LET AI DO THE WORK
+================================================================================
+
+Why manually categorize hundreds of transactions? Let a coding agent do it!
+Open this folder in your preferred AI tool:
+
+  Claude Code:    cd {target_dir} && claude
+  Cursor:         cursor {target_dir}
+  Copilot CLI:    cd {target_dir} && ghcs
+  OpenCode:       cd {target_dir} && opencode
+
+Then just tell it what you want:
+
+  "Set up tally with my Amex statement in data/amex.csv"
+  "Run tally discover and categorize all unknown merchants"
+  "Show me where I'm spending the most money"
+
+The agent reads AGENTS.md and knows how to use tally. You can literally
+just drop your bank statements in data/ and let the AI figure it out.
+
+================================================================================
 STATEMENT FILE FORMATS
 ================================================================================
 
