@@ -84,7 +84,24 @@ jobs:
           **Version:** ${VERSION}-dev
           **Commit:** ${SHA}
 
-          Install: \`curl -fsSL https://tallyai.money/install.sh | bash -s -- --prerelease\`
+          ### Install
+
+          **Update existing installation:**
+          \`\`\`bash
+          tally update --prerelease
+          \`\`\`
+
+          **Linux / macOS:**
+          \`\`\`bash
+          curl -fsSL https://tallyai.money/install.sh | bash -s -- --prerelease
+          \`\`\`
+
+          **Windows PowerShell:**
+          \`\`\`powershell
+          iex "& { \$(irm https://tallyai.money/install.ps1) } -Prerelease"
+          \`\`\`
+
+          Or download the zip for your platform below.
           EOF
 
           gh release create dev \
