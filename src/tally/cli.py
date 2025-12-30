@@ -1911,7 +1911,7 @@ def main():
     """Main entry point for tally CLI."""
     parser = argparse.ArgumentParser(
         prog='tally',
-        description='Let AI classify your transactions - LLM-powered spending categorization.',
+        description='Let AI classify your bank transactions.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''Run 'tally workflow' to see next steps based on your current state.'''
     )
