@@ -472,9 +472,49 @@ def cmd_init(args):
         except Exception:
             pass
 
-    # Show next step
+    # Show next steps with agent detection
     print()
-    print(f"Run {C.GREEN}tally workflow{C.RESET} to see next steps.")
+
+    # Helper for clickable links (OSC 8 hyperlinks, with fallback)
+    def link(url, text=None):
+        text = text or url
+        if _supports_color():
+            return f"\033]8;;{url}\033\\{C.UNDERLINE}{C.BLUE}{text}{C.RESET}\033]8;;\033\\"
+        return url
+
+    # Check which agents are installed
+    agents = [
+        ('claude', 'Claude Code', 'https://claude.ai/download'),
+        ('copilot', 'GitHub Copilot', 'https://docs.github.com/en/copilot'),
+        ('aider', 'Aider', 'https://aider.chat'),
+        ('codex', 'Codex CLI', 'https://github.com/openai/codex'),
+    ]
+
+    agent_lines = []
+    for cmd, name, url in agents:
+        installed = shutil.which(cmd) is not None
+        if installed:
+            status = f"{C.GREEN}✓ installed{C.RESET}"
+        else:
+            status = link(url)
+        agent_lines.append(f"     {C.CYAN}{cmd:<11}{C.RESET} {name:<16} {status}")
+
+    agents_block = '\n'.join(agent_lines)
+
+    print(f"""{C.BOLD}Next steps:{C.RESET}
+
+  {C.BOLD}1.{C.RESET} Drop your bank/credit card exports into {C.CYAN}{rel_data}{C.RESET}
+
+  {C.BOLD}2.{C.RESET} Configure your data sources in {C.CYAN}{rel_settings}{C.RESET}
+
+  {C.BOLD}3.{C.RESET} Open this folder in an AI coding agent:
+{agents_block}
+     {C.DIM}Or any agent that can run command-line tools.{C.RESET}
+
+  {C.BOLD}4.{C.RESET} Run {C.GREEN}tally workflow{C.RESET} to see context-aware next steps
+
+{C.DIM}The agent can run tally workflow at any time to see what to do next.{C.RESET}
+""")
 
 
 def cmd_run(args):
