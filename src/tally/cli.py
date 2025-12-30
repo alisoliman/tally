@@ -238,6 +238,28 @@ Pattern,Merchant,Category,Subcategory
 
 '''
 
+_deprecated_parser_warnings = []  # Collect warnings to print at end
+
+def _warn_deprecated_parser(source_name, parser_type, filepath):
+    """Record deprecation warning for amex/boa parsers (to print at end)."""
+    warning = (source_name, parser_type, filepath)
+    if warning not in _deprecated_parser_warnings:
+        _deprecated_parser_warnings.append(warning)
+
+def _print_deprecation_warnings():
+    """Print all collected deprecation warnings."""
+    if not _deprecated_parser_warnings:
+        return
+    print()
+    for source_name, parser_type, filepath in _deprecated_parser_warnings:
+        print(f"{C.YELLOW}Warning:{C.RESET} The '{parser_type}' parser is deprecated and will be removed in a future release.")
+        print(f"  Source: {source_name}")
+        print(f"  Run: {C.GREEN}tally inspect {filepath}{C.RESET} to get a format string for your CSV.")
+        print(f"  Then update settings.yaml to use 'format:' instead of 'type: {parser_type}'")
+        print()
+    _deprecated_parser_warnings.clear()
+
+
 def find_config_dir():
     """Find the config directory, checking environment and both layouts.
 
@@ -601,8 +623,10 @@ def cmd_run(args):
 
         try:
             if parser_type == 'amex':
+                _warn_deprecated_parser(source.get('name', 'AMEX'), 'amex', source['file'])
                 txns = parse_amex(filepath, rules, home_locations, cleaning_patterns)
             elif parser_type == 'boa':
+                _warn_deprecated_parser(source.get('name', 'BOA'), 'boa', source['file'])
                 txns = parse_boa(filepath, rules, home_locations, cleaning_patterns)
             elif parser_type == 'generic' and format_spec:
                 txns = parse_generic_csv(filepath, format_spec, rules,
@@ -722,6 +746,8 @@ def cmd_run(args):
             clickable_path = f"\033]8;;{file_url}\033\\{output_path}\033]8;;\033\\"
             print(f"\nHTML report: {clickable_path}")
 
+    _print_deprecation_warnings()
+
 
 def cmd_discover(args):
     """Handle the 'discover' subcommand - find unknown merchants for rule creation."""
@@ -786,8 +812,10 @@ def cmd_discover(args):
 
         try:
             if parser_type == 'amex':
+                _warn_deprecated_parser(source.get('name', 'AMEX'), 'amex', source['file'])
                 txns = parse_amex(filepath, rules, home_locations, cleaning_patterns)
             elif parser_type == 'boa':
+                _warn_deprecated_parser(source.get('name', 'BOA'), 'boa', source['file'])
                 txns = parse_boa(filepath, rules, home_locations, cleaning_patterns)
             elif parser_type == 'generic' and format_spec:
                 txns = parse_generic_csv(filepath, format_spec, rules,
@@ -886,6 +914,8 @@ def cmd_discover(args):
             print(f"   Suggested merchant: {merchant}")
             print(f"   CSV: {pattern},{merchant},CATEGORY,SUBCATEGORY")
             print()
+
+    _print_deprecation_warnings()
 
 
 def suggest_pattern(description):
@@ -1541,8 +1571,10 @@ def cmd_explain(args):
 
         try:
             if parser_type == 'amex':
+                _warn_deprecated_parser(source.get('name', 'AMEX'), 'amex', source['file'])
                 txns = parse_amex(filepath, rules, home_locations, cleaning_patterns)
             elif parser_type == 'boa':
+                _warn_deprecated_parser(source.get('name', 'BOA'), 'boa', source['file'])
                 txns = parse_boa(filepath, rules, home_locations, cleaning_patterns)
             elif parser_type == 'generic' and format_spec:
                 txns = parse_generic_csv(filepath, format_spec, rules,
@@ -1697,6 +1729,8 @@ def cmd_explain(args):
     else:
         # No specific merchant - show classification summary
         _print_explain_summary(stats, verbose)
+
+    _print_deprecation_warnings()
 
 
 def _print_description_explanation(query, trace, output_format, verbose):
