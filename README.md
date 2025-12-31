@@ -137,17 +137,17 @@ Run `tally inspect <file>` to see suggested account type based on your data.
 
 ### Merchant Rules
 
-#### merchants.merchants (Recommended)
+#### merchants.rules (Recommended)
 
 Expression-based rules with full power:
 
 ```yaml
 # settings.yaml
-merchants_file: config/merchants.merchants
+merchants_file: config/merchants.rules
 ```
 
 ```python
-# config/merchants.merchants
+# config/merchants.rules
 
 # Variables for reuse
 is_large = amount > 200
@@ -228,9 +228,9 @@ Run `tally run` to migrate to the new format.
 - Filter in UI: Click tag badges or type `t:business` in search
 - Filter in CLI: `tally explain --tags business,reimbursable`
 
-### sections.sections (Optional)
+### views.rules (Optional)
 
-Define custom spending views using filter expressions. Create `config/sections.sections`:
+Define custom views using filter expressions. Create `config/views.rules`:
 
 ```
 [Every Month]
@@ -334,7 +334,7 @@ filter: "recurring" in tags and avg(payments) > 50
 filter: max(sum(by("month"))) > 1000
 ```
 
-Sections can overlap - the same merchant can appear in multiple sections.
+Views can overlap - the same merchant can appear in multiple views.
 
 ## For AI Agents
 

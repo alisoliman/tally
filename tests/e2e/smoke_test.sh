@@ -33,8 +33,8 @@ if [ ! -f "tally/config/settings.yaml" ]; then
     echo "✗ settings.yaml not found"
     exit 1
 fi
-if [ ! -f "tally/config/merchant_categories.csv" ]; then
-    echo "✗ merchant_categories.csv not found"
+if [ ! -f "tally/config/merchants.rules" ]; then
+    echo "✗ merchants.rules not found"
     exit 1
 fi
 echo "✓ Init created expected files"
