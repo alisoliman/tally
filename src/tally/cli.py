@@ -2536,7 +2536,6 @@ def cmd_update(args):
 
     if success:
         print(f"\n✓ {message}")
-        print("\nRestart tally to use the new version.")
     else:
         print(f"\n✗ {message}")
         sys.exit(1)
