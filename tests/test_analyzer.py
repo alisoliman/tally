@@ -908,7 +908,7 @@ class TestAmountSignHandling:
 
 
 class TestSpecialTags:
-    """Tests for special tags that affect spending analysis (income, transfer, refund)."""
+    """Tests for special tags that affect spending analysis (income, transfer)."""
 
     def _create_transactions(self, txn_list):
         """Helper to create transaction dicts for testing."""
@@ -969,24 +969,20 @@ class TestSpecialTags:
         total_spending = sum(data['total'] for data in stats['by_category'].values())
         assert total_spending == 55.00
 
-    def test_refund_tag_included_but_tracked_separately(self):
-        """Transactions with 'refund' tag are included in spending but tracked in refund_transactions."""
+    def test_refund_tag_not_special(self):
+        """Refund tag is not special - refunds are regular transactions that net against spending."""
         from tally.analyzer import analyze_transactions
 
         txns = self._create_transactions([
             ('AMAZON PURCHASE', 100.00, 'Shopping', []),
-            ('AMAZON REFUND', -25.00, 'Shopping', ['refund']),
+            ('AMAZON REFUND', -25.00, 'Shopping', ['refund']),  # Just a regular tag
             ('GROCERY STORE', 50.00, 'Food', []),
         ])
 
         stats = analyze_transactions(txns)
 
-        # Refund should NOT be excluded
+        # Refund should NOT be excluded (refund tag is not special)
         assert stats['excluded_count'] == 0
-        # Refund should be tracked separately
-        assert stats['refund_count'] == 1
-        assert stats['refund_total'] == -25.00
-        assert stats['refund_transactions'][0]['merchant'] == 'AMAZON'
         # Spending should include all: 100 - 25 + 50 = 125
         total_spending = sum(data['total'] for data in stats['by_category'].values())
         assert total_spending == 125.00
@@ -999,7 +995,7 @@ class TestSpecialTags:
             ('GROCERY STORE', 50.00, 'Food', []),
             ('SALARY DEPOSIT', 3000.00, 'Income', ['income']),
             ('VENMO TRANSFER', 100.00, 'Finance', ['transfer']),
-            ('AMAZON REFUND', -30.00, 'Shopping', ['refund']),
+            ('AMAZON REFUND', -30.00, 'Shopping', []),  # Regular transaction
             ('COFFEE SHOP', 5.00, 'Food', []),
         ])
 
@@ -1007,9 +1003,6 @@ class TestSpecialTags:
 
         # Income + transfer should be excluded
         assert stats['excluded_count'] == 2
-        # Refund should be tracked separately
-        assert stats['refund_count'] == 1
-        assert stats['refund_total'] == -30.00
         # Spending: grocery(50) + refund(-30) + coffee(5) = 25
         total_spending = sum(data['total'] for data in stats['by_category'].values())
         assert total_spending == 25.00

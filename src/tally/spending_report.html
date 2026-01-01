@@ -86,14 +86,14 @@
                         </div>
                     </div>
                 </div>
-                <!-- Cash Flow card - only show when there's income to make the flow meaningful -->
+                <!-- Cash Flow card - show when there's income -->
                 <div class="card cashflow" v-if="incomeCount > 0">
                     <h2>Cash Flow</h2>
                     <div class="amount" :class="{ positive: netCashFlow >= 0, negative: netCashFlow < 0 }">
                         {{ netCashFlow >= 0 ? '+' : '' }}{{ formatCurrency(netCashFlow) }}
                     </div>
                     <div class="breakdown">
-                        <div class="breakdown-item clickable" @click="scrollToIncome">
+                        <div class="breakdown-item clickable" @click="addFilter('income', 'tag')">
                             <span class="name income-label">Income</span>
                             <span class="value">+{{ formatCurrency(Math.abs(incomeTotal)) }}</span>
                         </div>
@@ -101,20 +101,20 @@
                             <span class="name">Spending</span>
                             <span class="value">-{{ formatCurrency(grandTotal) }}</span>
                         </div>
-                        <div class="breakdown-item clickable" v-if="transfersCount > 0" @click="scrollToTransfers">
+                        <div class="breakdown-item clickable" v-if="transfersCount > 0" @click="addFilter('transfer', 'tag')">
                             <span class="name transfers-label">Transfers</span>
                             <span class="value">-{{ formatCurrency(Math.abs(transfersTotal)) }}</span>
                         </div>
                     </div>
                 </div>
-                <!-- Transfers-only card - show when there are transfers but no income -->
-                <div class="card transfers-summary" v-else-if="transfersCount > 0">
-                    <h2>Transfers</h2>
-                    <div class="amount">{{ formatCurrency(Math.abs(transfersTotal)) }}</div>
+                <!-- Excluded card - show when there are excluded but no income -->
+                <div class="card excluded-summary" v-else-if="filteredExcludedCount > 0">
+                    <h2>Excluded</h2>
+                    <div class="amount">{{ formatCurrency(excludedTotal) }}</div>
                     <div class="breakdown">
-                        <div class="breakdown-item clickable" @click="scrollToTransfers">
-                            <span class="name transfers-label">Credit card payments, etc.</span>
-                            <span class="value">{{ transfersCount }} transactions</span>
+                        <div class="breakdown-item clickable" @click="scrollToExcluded">
+                            <span class="name">Not included in spending</span>
+                            <span class="value">{{ filteredExcludedCount }} transactions</span>
                         </div>
                     </div>
                 </div>
@@ -363,23 +363,23 @@
                 </template>
             </template>
 
-            <!-- Income Section -->
-            <section class="income-section" v-if="incomeCount > 0">
-                <div class="section-header" @click="showIncome = !showIncome">
+            <!-- Excluded Section -->
+            <section class="excluded-section" v-if="filteredExcludedCount > 0">
+                <div class="section-header" @click="showExcluded = !showExcluded">
                     <h2>
-                        <span class="toggle">{{ showIncome ? '▼' : '▶' }}</span>
-                        Income
+                        <span class="toggle">{{ showExcluded ? '▼' : '▶' }}</span>
+                        Excluded
                     </h2>
                     <span class="section-total">
-                        <span class="section-ytd income-amount">+{{ formatCurrency(Math.abs(incomeTotal)) }}</span>
-                        <span class="section-pct">({{ incomeCount }} transactions)</span>
+                        <span class="section-ytd">{{ formatCurrency(excludedTotal) }}</span>
+                        <span class="section-pct">({{ filteredExcludedCount }} transactions, not included in spending)</span>
                     </span>
                 </div>
-                <div class="section-content" v-show="showIncome">
+                <div class="section-content" v-show="showExcluded">
                     <table>
                         <thead>
                             <tr>
-                                <th>Source</th>
+                                <th>Merchant</th>
                                 <th>Category</th>
                                 <th>Tags</th>
                                 <th>Count</th>
@@ -387,76 +387,10 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template v-for="(group, idx) in groupedIncome" :key="idx">
-                                <tr class="merchant-row" @click="expandedIncome.has(idx) ? expandedIncome.delete(idx) : expandedIncome.add(idx)">
+                            <template v-for="(group, idx) in groupedExcluded" :key="idx">
+                                <tr class="merchant-row" @click="expandedExcluded.has(idx) ? expandedExcluded.delete(idx) : expandedExcluded.add(idx)">
                                     <td>
-                                        <span class="expand-arrow">{{ expandedIncome.has(idx) ? '▼' : '▶' }}</span>
-                                        {{ group.merchant }}
-                                    </td>
-                                    <td class="category">{{ group.subcategory }}</td>
-                                    <td class="tags-cell">
-                                        <span v-for="tag in (group.tags || [])"
-                                              :key="tag"
-                                              class="tag-badge"
-                                              @click.stop="addFilter(tag, 'tag')">{{ tag }}</span>
-                                    </td>
-                                    <td>{{ group.count }}</td>
-                                    <td class="money income-amount">+{{ formatCurrency(Math.abs(group.total)) }}</td>
-                                </tr>
-                                <tr v-for="txn in group.transactions"
-                                    :key="txn.id"
-                                    class="txn-row"
-                                    :class="{ hidden: !expandedIncome.has(idx) }">
-                                    <td colspan="5">
-                                        <div class="txn-detail">
-                                            <span class="txn-date">{{ formatDate(txn.date) }}</span>
-                                            <span class="txn-source" :class="txn.source.toLowerCase()">{{ txn.source }}</span>
-                                            <span class="txn-desc">{{ txn.description }}</span>
-                                            <span class="txn-amount income-amount">+{{ formatCurrency(Math.abs(txn.amount)) }}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                        <tfoot>
-                            <tr class="total-row">
-                                <td colspan="3">Total</td>
-                                <td>{{ incomeCount }}</td>
-                                <td class="money income-amount">+{{ formatCurrency(Math.abs(incomeTotal)) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Transfers Section -->
-            <section class="transfers-section" v-if="transfersCount > 0">
-                <div class="section-header" @click="showTransfers = !showTransfers">
-                    <h2>
-                        <span class="toggle">{{ showTransfers ? '▼' : '▶' }}</span>
-                        Transfers
-                    </h2>
-                    <span class="section-total">
-                        <span class="section-ytd">{{ formatCurrency(transfersTotal) }}</span>
-                        <span class="section-pct">({{ transfersCount }} transactions)</span>
-                    </span>
-                </div>
-                <div class="section-content" v-show="showTransfers">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Destination</th>
-                                <th>Category</th>
-                                <th>Tags</th>
-                                <th>Count</th>
-                                <th class="money">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="(group, idx) in groupedTransfers" :key="idx">
-                                <tr class="merchant-row" @click="expandedTransfers.has(idx) ? expandedTransfers.delete(idx) : expandedTransfers.add(idx)">
-                                    <td>
-                                        <span class="expand-arrow">{{ expandedTransfers.has(idx) ? '▼' : '▶' }}</span>
+                                        <span class="expand-arrow">{{ expandedExcluded.has(idx) ? '▼' : '▶' }}</span>
                                         {{ group.merchant }}
                                     </td>
                                     <td class="category">{{ group.subcategory }}</td>
@@ -472,7 +406,7 @@
                                 <tr v-for="txn in group.transactions"
                                     :key="txn.id"
                                     class="txn-row"
-                                    :class="{ hidden: !expandedTransfers.has(idx) }">
+                                    :class="{ hidden: !expandedExcluded.has(idx) }">
                                     <td colspan="5">
                                         <div class="txn-detail">
                                             <span class="txn-date">{{ formatDate(txn.date) }}</span>
@@ -487,75 +421,8 @@
                         <tfoot>
                             <tr class="total-row">
                                 <td colspan="3">Total</td>
-                                <td>{{ transfersCount }}</td>
-                                <td class="money">{{ formatCurrency(transfersTotal) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Refunds Section (included in spending, shown for visibility) -->
-            <section class="refunds-section" v-if="refundCount > 0">
-                <div class="section-header" @click="showRefunds = !showRefunds">
-                    <h2>
-                        <span class="toggle">{{ showRefunds ? '▼' : '▶' }}</span>
-                        Refunds
-                    </h2>
-                    <span class="section-total">
-                        <span class="section-ytd refund-amount">{{ formatCurrency(refundTotal) }}</span>
-                        <span class="section-pct">({{ refundCount }} transactions, included in spending)</span>
-                    </span>
-                </div>
-                <div class="section-content" v-show="showRefunds">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Merchant</th>
-                                <th>Category</th>
-                                <th>Tags</th>
-                                <th>Count</th>
-                                <th class="money">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="(group, idx) in groupedRefunds" :key="idx">
-                                <tr class="merchant-row" @click="expandedRefunds.has(idx) ? expandedRefunds.delete(idx) : expandedRefunds.add(idx)">
-                                    <td>
-                                        <span class="expand-arrow">{{ expandedRefunds.has(idx) ? '▼' : '▶' }}</span>
-                                        {{ group.merchant }}
-                                    </td>
-                                    <td class="category">{{ group.subcategory }}</td>
-                                    <td class="tags-cell">
-                                        <span v-for="tag in (group.tags || [])"
-                                              :key="tag"
-                                              class="tag-badge"
-                                              :class="{ 'special-tag': ['refund', 'income', 'transfer'].includes(tag) }"
-                                              @click.stop="addFilter(tag, 'tag')">{{ tag }}</span>
-                                    </td>
-                                    <td>{{ group.count }}</td>
-                                    <td class="money refund-amount">{{ formatCurrency(group.total) }}</td>
-                                </tr>
-                                <tr v-for="txn in group.transactions"
-                                    :key="txn.id"
-                                    class="txn-row"
-                                    :class="{ hidden: !expandedRefunds.has(idx) }">
-                                    <td colspan="5">
-                                        <div class="txn-detail">
-                                            <span class="txn-date">{{ formatDate(txn.date) }}</span>
-                                            <span class="txn-source" :class="txn.source.toLowerCase()">{{ txn.source }}</span>
-                                            <span class="txn-desc">{{ txn.description }}</span>
-                                            <span class="txn-amount refund-amount">{{ formatCurrency(txn.amount) }}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                        <tfoot>
-                            <tr class="total-row">
-                                <td colspan="3">Total</td>
-                                <td>{{ refundCount }}</td>
-                                <td class="money refund-amount">{{ formatCurrency(refundTotal) }}</td>
+                                <td>{{ filteredExcludedCount }}</td>
+                                <td class="money">{{ formatCurrency(excludedTotal) }}</td>
                             </tr>
                         </tfoot>
                     </table>

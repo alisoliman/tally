@@ -23,7 +23,6 @@ createApp({
         const isDarkTheme = ref(true);
         const chartsCollapsed = ref(false);
         const helpCollapsed = ref(true);
-        const showExcluded = ref(false); // Toggle for excluded transactions (income/credits)
         const currentView = ref('category'); // 'category' or 'section'
         const sortConfig = reactive({}); // { 'cat:Food': { column: 'total', dir: 'desc' } }
 
@@ -306,13 +305,19 @@ createApp({
             return true;
         }
 
-        // Income transactions (credits/deposits) - check for 'income' tag or legacy reason
+        // Filtered excluded transactions (respects tag filters)
+        const filteredExcluded = computed(() => {
+            return excludedTransactions.value.filter(t => passesTagFilters(t));
+        });
+        const excludedTotal = computed(() => {
+            return filteredExcluded.value.reduce((sum, t) => sum + t.amount, 0);
+        });
+        const filteredExcludedCount = computed(() => filteredExcluded.value.length);
+
+        // Income and Transfer totals (from excluded transactions, by tag)
         const incomeTransactions = computed(() => {
             return excludedTransactions.value.filter(t =>
-                (t.excluded_reason === 'income' ||
-                t.excluded_reason === 'tagged-income' ||
-                (t.tags && t.tags.includes('income'))) &&
-                passesTagFilters(t)
+                t.tags && t.tags.includes('income')
             );
         });
         const incomeTotal = computed(() => {
@@ -320,13 +325,9 @@ createApp({
         });
         const incomeCount = computed(() => incomeTransactions.value.length);
 
-        // Transfer transactions (CC payments, P2P, etc.) - check for 'transfer' tag or legacy reason
         const transferTransactions = computed(() => {
             return excludedTransactions.value.filter(t =>
-                (t.excluded_reason === 'transfer' ||
-                t.excluded_reason === 'tagged-transfer' ||
-                (t.tags && t.tags.includes('transfer'))) &&
-                passesTagFilters(t)
+                t.tags && t.tags.includes('transfer')
             );
         });
         const transfersTotal = computed(() => {
@@ -334,20 +335,9 @@ createApp({
         });
         const transfersCount = computed(() => transferTransactions.value.length);
 
-        // Refund transactions (included in spending, shown for visibility)
-        const refundTransactions = computed(() => {
-            return (spendingData.value.refundTransactions || []).filter(t => passesTagFilters(t));
-        });
-        const refundTotal = computed(() => {
-            return refundTransactions.value.reduce((sum, t) => sum + t.amount, 0);
-        });
-        const refundCount = computed(() => {
-            return refundTransactions.value.length;
-        });
-
         // Net cash flow
         const netCashFlow = computed(() => {
-            return Math.abs(incomeTotal.value) - grandTotal.value - transfersTotal.value;
+            return Math.abs(incomeTotal.value) - grandTotal.value - Math.abs(transfersTotal.value);
         });
 
         // Group transactions by merchant helper
@@ -373,44 +363,15 @@ createApp({
             return Object.values(groups).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
         }
 
-        const groupedIncome = computed(() => groupByMerchant(incomeTransactions.value));
-        const groupedTransfers = computed(() => groupByMerchant(transferTransactions.value));
-        const groupedRefunds = computed(() => groupByMerchant(refundTransactions.value));
+        const groupedExcluded = computed(() => groupByMerchant(filteredExcluded.value));
+        const expandedExcluded = reactive(new Set());
+        const showExcluded = ref(false);
 
-        const expandedIncome = reactive(new Set());
-        const expandedTransfers = reactive(new Set());
-        const expandedRefunds = reactive(new Set());
-        const showIncome = ref(false);
-        const showTransfers = ref(false);
-        const showRefunds = ref(false);
-
-        // Scroll to income section
-        function scrollToIncome() {
-            showIncome.value = true;
+        // Scroll to excluded section
+        function scrollToExcluded() {
+            showExcluded.value = true;
             nextTick(() => {
-                const section = document.querySelector('.income-section');
-                if (section) {
-                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        }
-
-        // Scroll to transfers section
-        function scrollToTransfers() {
-            showTransfers.value = true;
-            nextTick(() => {
-                const section = document.querySelector('.transfers-section');
-                if (section) {
-                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        }
-
-        // Scroll to refunds section
-        function scrollToRefunds() {
-            showRefunds.value = true;
-            nextTick(() => {
-                const section = document.querySelector('.refunds-section');
+                const section = document.querySelector('.excluded-section');
                 if (section) {
                     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -1163,7 +1124,7 @@ createApp({
             // State
             activeFilters, expandedMerchants, collapsedSections, searchQuery,
             showAutocomplete, autocompleteIndex, isScrolled, isDarkTheme, chartsCollapsed, helpCollapsed,
-            showIncome, showTransfers, currentView, sortConfig,
+            showExcluded, currentView, sortConfig,
             // Refs
             monthlyChart, categoryPieChart, categoryByMonthChart,
             // Computed
@@ -1172,19 +1133,16 @@ createApp({
             sectionTotals, grandTotal, uncategorizedTotal,
             numFilteredMonths, filteredAutocomplete, availableMonths,
             categoryColorMap,
+            // Excluded transactions
+            excludedTotal, filteredExcludedCount, groupedExcluded, expandedExcluded,
             // Cash flow
-            incomeTotal, incomeCount, groupedIncome, expandedIncome,
-            transfersTotal, transfersCount, groupedTransfers, expandedTransfers,
-            refundTotal, refundCount, groupedRefunds, expandedRefunds,
-            netCashFlow,
-            // UI state
-            showIncome, showTransfers, showRefunds,
+            incomeTotal, incomeCount, transfersTotal, transfersCount, netCashFlow,
             // Methods
             addFilter, removeFilter, toggleFilterMode, clearFilters, addMonthFilter,
             toggleExpand, toggleSection, toggleSort, sortedMerchants,
             formatCurrency, formatDate, formatMonthLabel, formatPct, filterTypeChar, getLocationClass,
             onSearchInput, onSearchKeydown, selectAutocompleteItem,
-            toggleTheme, scrollToIncome, scrollToTransfers, scrollToRefunds
+            toggleTheme, scrollToExcluded
         };
     }
 }).mount('#app');

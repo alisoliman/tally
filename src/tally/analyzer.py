@@ -571,35 +571,16 @@ def analyze_transactions(transactions):
 
     # Track excluded transactions separately (for transparency in UI)
     excluded_transactions = []
-    # Track refund transactions (included in spending but shown separately for visibility)
-    refund_transactions = []
 
     # Special tags that affect spending analysis
     EXCLUDE_TAGS = {'income', 'transfer'}  # Excluded from spending totals
-    REFUND_TAG = 'refund'  # Nets against merchant spending (still included, but negative)
 
     for txn in transactions:
-        # Track excluded transactions separately but don't include in spending analysis
-        # Check for special tags: income, transfer -> exclude; refund -> include but nets
+        # Check for special tags: income, transfer -> exclude from spending
         txn_tags = set(t.lower() for t in txn.get('tags', []))
         excluded_reason = txn.get('excluded')
         if not excluded_reason and (txn_tags & EXCLUDE_TAGS):
             excluded_reason = 'tagged-' + next(iter(txn_tags & EXCLUDE_TAGS))
-
-        # Track refunds for visibility (they're included in spending but shown separately)
-        if REFUND_TAG in txn_tags:
-            refund_transactions.append({
-                'date': txn['date'].strftime('%m/%d'),
-                'month': txn['date'].strftime('%Y-%m'),
-                'description': txn.get('raw_description', txn['description']),
-                'merchant': txn['merchant'],
-                'amount': txn['amount'],
-                'category': txn['category'],
-                'subcategory': txn['subcategory'],
-                'source': txn['source'],
-                'location': txn.get('location'),
-                'tags': txn.get('tags', []),
-            })
 
         if excluded_reason:
             excluded_transactions.append({
@@ -784,10 +765,6 @@ def analyze_transactions(transactions):
         'excluded_transactions': excluded_transactions,
         'excluded_count': len(excluded_transactions),
         'excluded_total': sum(t['amount'] for t in excluded_transactions),
-        # Refund transactions (included in spending but shown for visibility)
-        'refund_transactions': refund_transactions,
-        'refund_count': len(refund_transactions),
-        'refund_total': sum(t['amount'] for t in refund_transactions),
     }
 
 
@@ -1471,20 +1448,14 @@ def write_summary_file_vue(stats, filepath, year=2025, home_locations=None, curr
                     latest_date = txn.get('date', '')
 
     # Build category view - group all merchants by category -> subcategory
+    # This uses by_merchant (all merchants) so it's not filtered by views.rules
     def build_category_view():
-        # Collect all merchants - from sections if available, otherwise from classification dicts
+        # Build from by_merchant which contains ALL merchants (not filtered by sections)
         all_merchants = {}
-        if sections:
-            for section in sections.values():
-                for merchant_id, merchant in section['merchants'].items():
-                    all_merchants[merchant_id] = merchant
-        else:
-            # Fallback: build from classification dicts when no views configured
-            for merchant_dict in [monthly_merchants, annual_merchants, periodic_merchants,
-                                  travel_merchants, one_off_merchants, variable_merchants]:
-                for merchant_name, data in merchant_dict.items():
-                    merchant_id = make_merchant_id(merchant_name)
-                    all_merchants[merchant_id] = build_section_merchants({merchant_name: data})[merchant_id]
+        by_merchant = stats.get('by_merchant', {})
+        for merchant_name, data in by_merchant.items():
+            merchant_id = make_merchant_id(merchant_name)
+            all_merchants[merchant_id] = build_section_merchants({merchant_name: data})[merchant_id]
 
         # Group by category -> subcategory
         categories = {}
@@ -1541,10 +1512,6 @@ def write_summary_file_vue(stats, filepath, year=2025, home_locations=None, curr
         'excludedTransactions': stats.get('excluded_transactions', []),
         'excludedCount': stats.get('excluded_count', 0),
         'excludedTotal': stats.get('excluded_total', 0),
-        # Refund transactions (included in spending, shown for visibility)
-        'refundTransactions': stats.get('refund_transactions', []),
-        'refundCount': stats.get('refund_count', 0),
-        'refundTotal': stats.get('refund_total', 0),
     }
 
     # Assemble final HTML
