@@ -1124,6 +1124,20 @@ section:nth-child(5) { animation-delay: 0.4s; }
     color: var(--accent-green) !important;
 }
 
+/* Credits Section */
+.credits-section {
+    margin-top: 2rem;
+}
+.credits-section .section-header h2 {
+    color: var(--accent-green);
+}
+.credit-amount {
+    color: var(--accent-green) !important;
+}
+.credit-label {
+    color: var(--accent-green);
+}
+
 /* Transfers Section */
 .transfers-section {
     margin-top: 2rem;

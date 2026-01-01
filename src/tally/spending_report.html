@@ -80,7 +80,11 @@
                     <h2>Total Spending (YTD)</h2>
                     <div class="amount">{{ formatCurrency(grandTotal) }}</div>
                     <div class="breakdown">
-                        <div class="breakdown-item">
+                        <div class="breakdown-item" v-if="creditsTotal > 0">
+                            <span class="name credit-label">Credits Applied</span>
+                            <span class="value">+{{ formatCurrency(creditsTotal) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="uncategorizedTotal > 0">
                             <span class="name">Uncategorized</span>
                             <span class="value">{{ formatCurrency(uncategorizedTotal) }} ({{ formatPct(uncategorizedTotal, grandTotal) }})</span>
                         </div>
@@ -264,7 +268,7 @@
 
             <!-- Category View -->
             <template v-if="currentView === 'category'">
-            <template v-for="(category, categoryName) in filteredCategoryView" :key="categoryName">
+            <template v-for="(category, categoryName) in positiveCategoryView" :key="categoryName">
                     <section class="category-section">
                         <div class="section-header" @click="toggleSection('cat:' + categoryName)">
                             <h2>
@@ -363,6 +367,64 @@
                 </template>
             </template>
 
+            <!-- Credits Section (refunds/credits that reduced spending) -->
+            <section class="credits-section" v-if="creditMerchants.length > 0">
+                <div class="section-header">
+                    <h2>
+                        <span class="toggle">▼</span>
+                        Credits Applied
+                    </h2>
+                    <span class="section-total">
+                        <span class="section-ytd credit-amount">+{{ formatCurrency(creditsTotal) }}</span>
+                        <span class="section-pct">(reduced spending)</span>
+                    </span>
+                </div>
+                <div class="section-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Category</th>
+                                <th>Count</th>
+                                <th class="money">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-for="credit in creditMerchants" :key="credit.id">
+                                <tr class="merchant-row" @click="expandedMerchants.has(credit.id) ? expandedMerchants.delete(credit.id) : expandedMerchants.add(credit.id)">
+                                    <td>
+                                        <span class="expand-arrow">{{ expandedMerchants.has(credit.id) ? '▼' : '▶' }}</span>
+                                        {{ credit.displayName }}
+                                    </td>
+                                    <td class="category">{{ credit.subcategory }}</td>
+                                    <td>{{ credit.filteredCount }}</td>
+                                    <td class="money credit-amount">+{{ formatCurrency(credit.creditAmount) }}</td>
+                                </tr>
+                                <tr v-for="txn in credit.filteredTxns"
+                                    :key="txn.id"
+                                    class="txn-row"
+                                    :class="{ hidden: !expandedMerchants.has(credit.id) }">
+                                    <td colspan="4">
+                                        <div class="txn-detail">
+                                            <span class="txn-date">{{ formatDate(txn.date) }}</span>
+                                            <span class="txn-source" :class="txn.source.toLowerCase()">{{ txn.source }}</span>
+                                            <span class="txn-desc">{{ txn.description }}</span>
+                                            <span class="txn-amount credit-amount">+{{ formatCurrency(Math.abs(txn.amount)) }}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="3">Total Credits</td>
+                                <td class="money credit-amount">+{{ formatCurrency(creditsTotal) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+
             <!-- Excluded Section -->
             <section class="excluded-section" v-if="filteredExcludedCount > 0">
                 <div class="section-header" @click="showExcluded = !showExcluded">
@@ -371,7 +433,6 @@
                         Excluded
                     </h2>
                     <span class="section-total">
-                        <span class="section-ytd">{{ formatCurrency(excludedTotal) }}</span>
                         <span class="section-pct">({{ filteredExcludedCount }} transactions, not included in spending)</span>
                     </span>
                 </div>
@@ -401,7 +462,9 @@
                                               @click.stop="addFilter(tag, 'tag')">{{ tag }}</span>
                                     </td>
                                     <td>{{ group.count }}</td>
-                                    <td class="money">{{ formatCurrency(group.total) }}</td>
+                                    <td class="money" :class="{ 'income-amount': group.tags && group.tags.includes('income') }">
+                                        {{ group.tags && group.tags.includes('income') ? '+' + formatCurrency(Math.abs(group.total)) : formatCurrency(group.total) }}
+                                    </td>
                                 </tr>
                                 <tr v-for="txn in group.transactions"
                                     :key="txn.id"
@@ -412,7 +475,9 @@
                                             <span class="txn-date">{{ formatDate(txn.date) }}</span>
                                             <span class="txn-source" :class="txn.source.toLowerCase()">{{ txn.source }}</span>
                                             <span class="txn-desc">{{ txn.description }}</span>
-                                            <span class="txn-amount">{{ formatCurrency(txn.amount) }}</span>
+                                            <span class="txn-amount" :class="{ 'income-amount': txn.tags && txn.tags.includes('income') }">
+                                                {{ txn.tags && txn.tags.includes('income') ? '+' + formatCurrency(Math.abs(txn.amount)) : formatCurrency(txn.amount) }}
+                                            </span>
                                         </div>
                                     </td>
                                 </tr>
@@ -422,7 +487,7 @@
                             <tr class="total-row">
                                 <td colspan="3">Total</td>
                                 <td>{{ filteredExcludedCount }}</td>
-                                <td class="money">{{ formatCurrency(excludedTotal) }}</td>
+                                <td class="money"></td>
                             </tr>
                         </tfoot>
                     </table>

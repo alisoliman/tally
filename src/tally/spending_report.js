@@ -198,6 +198,38 @@ createApp({
             );
         });
 
+        // Positive categories only (for main display, excludes credits/refunds)
+        const positiveCategoryView = computed(() => {
+            const result = {};
+            for (const [catName, category] of Object.entries(filteredCategoryView.value)) {
+                if (category.filteredTotal >= 0) {
+                    result[catName] = category;
+                }
+            }
+            return result;
+        });
+
+        // Credit merchants (negative totals, shown separately)
+        const creditMerchants = computed(() => {
+            const credits = [];
+            for (const [catName, category] of Object.entries(filteredCategoryView.value)) {
+                for (const [subName, subcat] of Object.entries(category.filteredSubcategories || {})) {
+                    for (const [merchantId, merchant] of Object.entries(subcat.filteredMerchants || {})) {
+                        if (merchant.filteredTotal < 0) {
+                            credits.push({
+                                id: merchantId,
+                                category: catName,
+                                subcategory: subName,
+                                ...merchant,
+                                creditAmount: Math.abs(merchant.filteredTotal)
+                            });
+                        }
+                    }
+                }
+            }
+            return credits.sort((a, b) => b.creditAmount - a.creditAmount);
+        });
+
         // Check if sections are defined
         const hasSections = computed(() => {
             const sections = spendingData.value.sections || {};
@@ -270,6 +302,22 @@ createApp({
             // Sum totals from category view (unique merchants only)
             return Object.values(filteredCategoryView.value)
                 .reduce((sum, cat) => sum + (cat.filteredTotal || 0), 0);
+        });
+
+        // Credits total (sum of negative category totals, shown as positive)
+        const creditsTotal = computed(() => {
+            let credits = 0;
+            for (const cat of Object.values(filteredCategoryView.value)) {
+                if (cat.filteredTotal < 0) {
+                    credits += Math.abs(cat.filteredTotal);
+                }
+            }
+            return credits;
+        });
+
+        // Gross spending (before credits)
+        const grossSpending = computed(() => {
+            return grandTotal.value + creditsTotal.value;
         });
 
         // Uncategorized total
@@ -1129,8 +1177,8 @@ createApp({
             monthlyChart, categoryPieChart, categoryByMonthChart,
             // Computed
             spendingData, title, subtitle,
-            visibleSections, filteredCategoryView, filteredSectionView, hasSections,
-            sectionTotals, grandTotal, uncategorizedTotal,
+            visibleSections, filteredCategoryView, positiveCategoryView, creditMerchants, filteredSectionView, hasSections,
+            sectionTotals, grandTotal, creditsTotal, uncategorizedTotal,
             numFilteredMonths, filteredAutocomplete, availableMonths,
             categoryColorMap,
             // Excluded transactions
