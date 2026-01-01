@@ -915,17 +915,28 @@ th[data-tooltip] { cursor: pointer; }
     padding-left: 2rem;
 }
 .txn-detail {
-    display: flex;
+    display: grid;
+    grid-template-columns: 3.5rem 1fr auto 4rem;
     align-items: center;
-    gap: 0.75rem;
+    justify-items: start;
+    gap: 0.3rem;
 }
 .txn-date {
     color: var(--text-muted);
-    min-width: 3rem;
+    text-align: left;
 }
 .txn-desc {
-    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    justify-self: start;
+    width: 100%;
+}
+.txn-desc > span:last-child {
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -938,8 +949,14 @@ th[data-tooltip] { cursor: pointer; }
 .txn-amount {
     color: var(--accent-pink);
     font-family: monospace;
-    min-width: 5rem;
     text-align: right;
+    justify-self: end;
+}
+.txn-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    justify-self: end;
 }
 .txn-badge {
     font-size: 0.65rem;
@@ -997,7 +1014,6 @@ th[data-tooltip] { cursor: pointer; }
     font-size: 0.7rem;
     padding: 0.1rem 0.4rem;
     border-radius: 3px;
-    margin-left: 0.5rem;
     font-weight: bold;
     background: var(--bg-location);
     color: #fff;

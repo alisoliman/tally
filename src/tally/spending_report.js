@@ -169,22 +169,23 @@ const MerchantSection = defineComponent({
                                     <td :colspan="totalColSpan">
                                         <div class="txn-detail">
                                             <span class="txn-date">{{ formatDate(txn.date) }}</span>
-                                            <span v-if="txn.source" class="txn-source" :class="txn.source.toLowerCase()">{{ txn.source }}</span>
-                                            <span class="txn-desc" v-html="highlightDescription(txn.description)"></span>
+                                            <span class="txn-desc"><span v-if="txn.source" class="txn-source" :class="txn.source.toLowerCase()">{{ txn.source }}</span> <span v-html="highlightDescription(txn.description)"></span></span>
+                                            <span class="txn-badges">
+                                                <span v-if="categoryMode && txn.amount < 0" class="txn-badge refund">REFUND</span>
+                                                <span v-if="txn.location && getLocationClass"
+                                                      class="txn-location clickable"
+                                                      :class="getLocationClass(txn.location)"
+                                                      @click.stop="addFilter(txn.location, 'location')">
+                                                    {{ txn.location }}
+                                                </span>
+                                                <span v-for="tag in (txn.tags || [])"
+                                                      :key="tag"
+                                                      class="tag-badge"
+                                                      @click.stop="addFilter(tag, 'tag')">{{ tag }}</span>
+                                            </span>
                                             <span class="txn-amount" :class="getTxnAmountClass(txn)">
                                                 {{ formatTxnAmount(txn) }}
                                             </span>
-                                            <span v-if="categoryMode && txn.amount < 0" class="txn-badge refund">REFUND</span>
-                                            <span v-if="txn.location && getLocationClass"
-                                                  class="txn-location clickable"
-                                                  :class="getLocationClass(txn.location)"
-                                                  @click.stop="addFilter(txn.location, 'location')">
-                                                {{ txn.location }}
-                                            </span>
-                                            <span v-for="tag in (txn.tags || [])"
-                                                  :key="tag"
-                                                  class="tag-badge"
-                                                  @click.stop="addFilter(tag, 'tag')">{{ tag }}</span>
                                         </div>
                                     </td>
                                 </tr>
