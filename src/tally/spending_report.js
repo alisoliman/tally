@@ -891,24 +891,31 @@ createApp({
                 }
             }
 
-            // Categories (unique)
+            // Categories and subcategories (unique, distinguished)
             const categories = new Set();
-            const subcategories = new Set();
+            const subcategories = new Map(); // subcategory -> parent category
             for (const category of Object.values(categoryView)) {
                 for (const subcat of Object.values(category.subcategories || {})) {
                     for (const merchant of Object.values(subcat.merchants || {})) {
                         categories.add(merchant.category);
-                        subcategories.add(merchant.subcategory);
+                        if (merchant.subcategory && merchant.subcategory !== merchant.category) {
+                            subcategories.set(merchant.subcategory, merchant.category);
+                        }
                     }
                 }
             }
             categories.forEach(c => items.push({
                 type: 'category', filterText: c, displayText: c, id: `c:${c}`
             }));
-            subcategories.forEach(s => {
+            subcategories.forEach((parentCat, s) => {
+                // Only add if not also a top-level category
                 if (!categories.has(s)) {
                     items.push({
-                        type: 'category', filterText: s, displayText: s, id: `cs:${s}`
+                        type: 'subcategory',
+                        filterText: s,
+                        displayText: `${parentCat} > ${s}`,
+                        parentCategory: parentCat,
+                        id: `cs:${s}`
                     });
                 }
             });
@@ -1058,9 +1065,9 @@ createApp({
                     return merchant.id.toLowerCase() === text ||
                            merchant.displayName.toLowerCase() === text;
                 case 'category':
-                    return merchant.category.toLowerCase().includes(text) ||
-                           merchant.subcategory.toLowerCase().includes(text) ||
-                           (merchant.categoryPath || '').toLowerCase().includes(text);
+                    return merchant.category.toLowerCase() === text;
+                case 'subcategory':
+                    return merchant.subcategory.toLowerCase() === text;
                 case 'location':
                     return (txn.location || '').toLowerCase() === text;
                 case 'month':
@@ -1210,7 +1217,7 @@ createApp({
         }
 
         function filterTypeChar(type) {
-            return { category: 'c', merchant: 'm', location: 'l', month: 'd', tag: 't', text: 's' }[type] || '?';
+            return { category: 'c', subcategory: 'sc', merchant: 'm', location: 'l', month: 'd', tag: 't', text: 's' }[type] || '?';
         }
 
         // Highlight search terms in transaction descriptions
@@ -1311,7 +1318,7 @@ createApp({
                 history.replaceState(null, '', location.pathname);
                 return;
             }
-            const typeChar = { category: 'c', merchant: 'm', location: 'l', month: 'd', tag: 't', text: 's' };
+            const typeChar = { category: 'c', subcategory: 'sc', merchant: 'm', location: 'l', month: 'd', tag: 't', text: 's' };
             const parts = activeFilters.value.map(f => {
                 const mode = f.mode === 'exclude' ? '-' : '+';
                 return `${mode}${typeChar[f.type]}:${encodeURIComponent(f.text)}`;
@@ -1322,12 +1329,14 @@ createApp({
         function hashToFilters() {
             const hash = location.hash.slice(1);
             if (!hash) return;
-            const typeMap = { c: 'category', m: 'merchant', l: 'location', d: 'month', t: 'tag', s: 'text' };
+            const typeMap = { c: 'category', sc: 'subcategory', m: 'merchant', l: 'location', d: 'month', t: 'tag', s: 'text' };
             hash.split('&').forEach(part => {
                 const mode = part[0] === '-' ? 'exclude' : 'include';
                 const start = part[0] === '+' || part[0] === '-' ? 1 : 0;
-                const type = typeMap[part[start]] || 'category';
-                const text = decodeURIComponent(part.slice(part.indexOf(':') + 1));
+                const colonIdx = part.indexOf(':');
+                const typeCode = part.slice(start, colonIdx);
+                const type = typeMap[typeCode] || 'category';
+                const text = decodeURIComponent(part.slice(colonIdx + 1));
                 if (text && !activeFilters.value.some(f => f.text === text && f.type === type)) {
                     const displayText = getDisplayText(type, text);
                     activeFilters.value.push({ text, type, mode, displayText });

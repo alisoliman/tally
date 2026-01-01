@@ -640,3 +640,249 @@ class TestEdgeCasesAndCalculations:
         # Verify the total changed (now showing only food)
         # This confirms filtering affects calculations
         # The specific value depends on what merchant was clicked
+
+
+# =============================================================================
+# Autocomplete Category/Subcategory Tests
+# =============================================================================
+
+@pytest.fixture(scope="module")
+def category_subcategory_report_path(tmp_path_factory):
+    """Generate a test report with varied categories and subcategories.
+
+    This fixture tests that autocomplete distinguishes between:
+    - Top-level categories (Food, Transport, Subscriptions)
+    - Subcategories (Grocery, Coffee, Gas, Rideshare, Streaming, Music)
+    """
+    tmp_dir = tmp_path_factory.mktemp("category_subcat_test")
+    config_dir = tmp_dir / "config"
+    data_dir = tmp_dir / "data"
+    output_dir = tmp_dir / "output"
+
+    config_dir.mkdir()
+    data_dir.mkdir()
+    output_dir.mkdir()
+
+    csv_content = """Date,Description,Amount
+01/05/2025,WHOLEFDS MKT 123,85.50
+01/08/2025,TRADER JOE 456,65.00
+01/10/2025,STARBUCKS COFFEE,6.50
+01/15/2025,SHELL OIL 789,45.00
+01/20/2025,UBER TRIP,25.00
+02/01/2025,NETFLIX STREAMING,15.99
+02/01/2025,SPOTIFY PREMIUM,9.99
+02/05/2025,AMAZON PURCHASE,75.00
+"""
+    (data_dir / "transactions.csv").write_text(csv_content)
+
+    settings_content = """year: 2025
+
+data_sources:
+  - name: Test
+    file: data/transactions.csv
+    format: "{date},{description},{amount}"
+
+merchants_file: config/merchants.rules
+"""
+    (config_dir / "settings.yaml").write_text(settings_content)
+
+    # Categories: Food, Transport, Subscriptions, Shopping
+    # Subcategories: Grocery, Coffee, Gas, Rideshare, Streaming, Music
+    rules_content = """[Whole Foods]
+match: contains("WHOLEFDS")
+category: Food
+subcategory: Grocery
+
+[Trader Joes]
+match: contains("TRADER JOE")
+category: Food
+subcategory: Grocery
+
+[Starbucks]
+match: contains("STARBUCKS")
+category: Food
+subcategory: Coffee
+
+[Shell Gas]
+match: contains("SHELL")
+category: Transport
+subcategory: Gas
+
+[Uber]
+match: contains("UBER")
+category: Transport
+subcategory: Rideshare
+
+[Netflix]
+match: contains("NETFLIX")
+category: Subscriptions
+subcategory: Streaming
+
+[Spotify]
+match: contains("SPOTIFY")
+category: Subscriptions
+subcategory: Music
+
+[Amazon]
+match: contains("AMAZON")
+category: Shopping
+subcategory: Shopping
+"""
+    (config_dir / "merchants.rules").write_text(rules_content)
+
+    # Generate report
+    report_path = output_dir / "spending.html"
+    subprocess.run(
+        ["uv", "run", "tally", "run", "--format", "html", "-o", str(report_path), str(config_dir)],
+        check=True,
+        capture_output=True
+    )
+
+    return str(report_path)
+
+
+class TestAutocompleteCategories:
+    """Tests for autocomplete category/subcategory distinction."""
+
+    def test_autocomplete_shows_category_type(self, page: Page, category_subcategory_report_path):
+        """Top-level categories show 'category' type badge."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        # Focus search and type to trigger autocomplete
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Food")
+
+        # Wait for autocomplete
+        page.wait_for_timeout(100)
+
+        # Check that Food appears with 'category' type
+        # Use .type.category to find items with category badge
+        autocomplete = page.locator(".autocomplete-list")
+        food_item = autocomplete.locator(".autocomplete-item:has(.type.category)", has_text="Food")
+        expect(food_item).to_be_visible()
+        expect(food_item.locator(".type")).to_have_text("category")
+
+    def test_autocomplete_shows_subcategory_with_parent(self, page: Page, category_subcategory_report_path):
+        """Subcategories show parent category and 'subcategory' type badge."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Gro")  # Should match "Food > Grocery" subcategory
+
+        page.wait_for_timeout(100)
+
+        autocomplete = page.locator(".autocomplete-list")
+        # Find item with subcategory badge showing "Food > Grocery"
+        grocery_item = autocomplete.locator(".autocomplete-item:has(.type.subcategory)", has_text="Food > Grocery")
+        expect(grocery_item).to_be_visible()
+        expect(grocery_item.locator(".type")).to_have_text("subcategory")
+
+    def test_category_and_subcategory_distinguished_in_same_search(self, page: Page, category_subcategory_report_path):
+        """Search results distinguish between category and subcategory."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        search = page.locator("input[type='text']")
+        autocomplete = page.locator(".autocomplete-list")
+
+        # Search for "Shop" - should show Shopping as category
+        search.click()
+        search.fill("Shop")
+        page.wait_for_timeout(100)
+        shopping_item = autocomplete.locator(".autocomplete-item:has(.type.category)", has_text="Shopping")
+        expect(shopping_item).to_be_visible()
+
+        # Search for "Stream" - should show Streaming as subcategory (with parent)
+        search.fill("Stream")
+        page.wait_for_timeout(100)
+        streaming_item = autocomplete.locator(".autocomplete-item:has(.type.subcategory)", has_text="Streaming")
+        expect(streaming_item).to_be_visible()
+
+    def test_subcategory_filter_chip_shows_sc_prefix(self, page: Page, category_subcategory_report_path):
+        """Selecting a subcategory creates filter chip with 'sc' prefix."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Grocery")
+
+        page.wait_for_timeout(100)
+
+        # Click the Grocery subcategory item (has .type.subcategory)
+        autocomplete = page.locator(".autocomplete-list")
+        grocery_item = autocomplete.locator(".autocomplete-item:has(.type.subcategory)", has_text="Grocery")
+        grocery_item.click()
+
+        page.wait_for_timeout(100)
+
+        # Check filter chip exists with subcategory class and 'sc' prefix
+        filter_chips = page.get_by_test_id("filter-chips")
+        chip = filter_chips.locator(".filter-chip.subcategory")
+        expect(chip).to_be_visible()
+        expect(chip.locator(".chip-type")).to_have_text("sc")
+
+    def test_category_filter_chip_shows_c_prefix(self, page: Page, category_subcategory_report_path):
+        """Selecting a category creates filter chip with 'c' prefix."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Transport")
+
+        page.wait_for_timeout(100)
+
+        # Click the Transport category item (has .type.category)
+        autocomplete = page.locator(".autocomplete-list")
+        transport_item = autocomplete.locator(".autocomplete-item:has(.type.category)", has_text="Transport")
+        transport_item.click()
+
+        page.wait_for_timeout(100)
+
+        # Check filter chip exists with category class and 'c' prefix
+        filter_chips = page.get_by_test_id("filter-chips")
+        chip = filter_chips.locator(".filter-chip.category")
+        expect(chip).to_be_visible()
+        expect(chip.locator(".chip-type")).to_have_text("c")
+
+    def test_subcategory_filter_applies_correctly(self, page: Page, category_subcategory_report_path):
+        """Filtering by subcategory shows only matching merchants."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Grocery")
+
+        page.wait_for_timeout(100)
+
+        # Click the Grocery subcategory
+        autocomplete = page.locator(".autocomplete-list")
+        grocery_item = autocomplete.locator(".autocomplete-item:has(.type.subcategory)", has_text="Grocery")
+        grocery_item.click()
+
+        page.wait_for_timeout(200)
+
+        # Should only show Whole Foods and Trader Joes (both in Grocery subcategory)
+        # Starbucks (Coffee subcategory) should not be visible
+        expect(page.locator(".merchant-row", has_text="Whole Foods")).to_be_visible()
+        expect(page.locator(".merchant-row", has_text="Trader Joes")).to_be_visible()
+        expect(page.locator(".merchant-row", has_text="Starbucks")).not_to_be_visible()
+
+    def test_same_name_category_and_subcategory_not_duplicated(self, page: Page, category_subcategory_report_path):
+        """When category == subcategory (Shopping), it shows as category only, not duplicated."""
+        page.goto(f"file://{category_subcategory_report_path}")
+
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Shopping")
+
+        page.wait_for_timeout(100)
+
+        autocomplete = page.locator(".autocomplete-list")
+        # Shopping should appear as category (with .type.category badge)
+        category_items = autocomplete.locator(".autocomplete-item:has(.type.category)", has_text="Shopping").all()
+        assert len(category_items) == 1
+
+        # Shopping should NOT appear as subcategory
+        subcategory_items = autocomplete.locator(".autocomplete-item:has(.type.subcategory)", has_text="Shopping").all()
+        assert len(subcategory_items) == 0

@@ -293,6 +293,9 @@ h1 {
 .autocomplete-item .type.category {
     color: var(--accent-blue);
 }
+.autocomplete-item .type.subcategory {
+    color: var(--accent-pink);
+}
 .autocomplete-item .type.merchant {
     color: var(--accent-cyan);
 }
@@ -356,6 +359,8 @@ h1 {
 }
 .filter-chip.category { border-color: var(--accent-blue); }
 .filter-chip.category.include { background: rgba(79, 172, 254, 0.2); color: var(--accent-blue); }
+.filter-chip.subcategory { border-color: var(--accent-pink); }
+.filter-chip.subcategory.include { background: rgba(240, 147, 251, 0.2); color: var(--accent-pink); }
 .filter-chip.merchant { border-color: var(--accent-cyan); }
 .filter-chip.merchant.include { background: rgba(77, 255, 210, 0.2); color: var(--accent-cyan); }
 .filter-chip.location { border-color: var(--accent-orange); }
@@ -364,7 +369,7 @@ h1 {
 .filter-chip.month.include { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
 .filter-chip.tag { border-color: var(--accent-yellow); }
 .filter-chip.tag.include { background: rgba(245, 175, 25, 0.2); color: var(--accent-yellow); }
-.filter-chip.category.exclude, .filter-chip.merchant.exclude, .filter-chip.location.exclude, .filter-chip.month.exclude, .filter-chip.tag.exclude {
+.filter-chip.category.exclude, .filter-chip.subcategory.exclude, .filter-chip.merchant.exclude, .filter-chip.location.exclude, .filter-chip.month.exclude, .filter-chip.tag.exclude {
     background: rgba(255, 107, 107, 0.15);
     border-color: var(--accent-red);
     color: var(--accent-red);
