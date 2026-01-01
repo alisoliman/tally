@@ -131,11 +131,13 @@ def get_all_rules(rules_path=None):
                 engine = load_merchants_file(Path(rules_path))
                 # Convert MerchantRule objects to the tuple format used by parsing code
                 for rule in engine.rules:
-                    # Convert expression to regex for backward compatibility
+                    # Preserve the full match_expr for expression-based rules
+                    # This allows amount/date conditions like "regex(...) and amount == 1500" to work
+                    pattern = rule.match_expr
                     regex_pattern = _expr_to_regex(rule.match_expr)
                     parsed = ParsedPattern(regex_pattern=regex_pattern)
                     user_rules_with_source.append((
-                        regex_pattern,    # pattern (converted to regex for matching)
+                        pattern,          # Full expression (for expr matching)
                         rule.name,        # merchant name
                         rule.category,
                         rule.subcategory,

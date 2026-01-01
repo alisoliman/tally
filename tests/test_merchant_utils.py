@@ -588,13 +588,13 @@ subcategory: Music
             rules = get_all_rules(f.name)
 
             assert len(rules) == 2
-            # First rule
-            assert rules[0][0] == 'NETFLIX'  # Converted pattern
+            # First rule - full expression preserved for expr matching
+            assert rules[0][0] == 'contains("NETFLIX")'
             assert rules[0][1] == 'Netflix'  # Merchant name
             assert rules[0][2] == 'Subscriptions'  # Category
             assert rules[0][3] == 'Streaming'  # Subcategory
             # Second rule
-            assert rules[1][0] == 'SPOTIFY'
+            assert rules[1][0] == 'contains("SPOTIFY")'
             assert rules[1][1] == 'Spotify'
         finally:
             os.unlink(f.name)
@@ -635,7 +635,8 @@ subcategory: Rideshare
             rules = get_all_rules(f.name)
 
             assert len(rules) == 1
-            assert rules[0][0] == r'UBER(?!.*EATS)'  # Regex extracted
+            # Full expression preserved for expr matching
+            assert rules[0][0] == r'regex("UBER(?!.*EATS)")'
             assert rules[0][1] == 'Uber Rides'
         finally:
             os.unlink(f.name)
@@ -658,6 +659,43 @@ subcategory: Streaming
             assert merchant == 'Netflix'
             assert category == 'Subscriptions'
             assert subcategory == 'Streaming'
+        finally:
+            os.unlink(f.name)
+
+    def test_rules_with_amount_conditions(self):
+        """Amount conditions in expressions should work when loaded from .rules files."""
+        content = """[Costco Gas]
+match: contains("COSTCO") and amount <= 100
+category: Transportation
+subcategory: Gas
+
+[Costco Groceries]
+match: contains("COSTCO") and amount > 100
+category: Food
+subcategory: Grocery
+"""
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.rules', delete=False)
+        try:
+            f.write(content)
+            f.close()
+
+            rules = get_all_rules(f.name)
+
+            # Low amount should match Gas
+            merchant, category, subcategory, _ = normalize_merchant(
+                'COSTCO FUEL', rules, amount=50.00
+            )
+            assert merchant == 'Costco Gas'
+            assert category == 'Transportation'
+            assert subcategory == 'Gas'
+
+            # High amount should match Groceries
+            merchant, category, subcategory, _ = normalize_merchant(
+                'COSTCO WHOLESALE', rules, amount=200.00
+            )
+            assert merchant == 'Costco Groceries'
+            assert category == 'Food'
+            assert subcategory == 'Grocery'
         finally:
             os.unlink(f.name)
 
@@ -746,10 +784,10 @@ subcategory: Grocery
 
             rules = get_all_rules(f.name)
 
-            # Both rules should load (the pattern extraction ignores amount condition)
+            # Both rules should load with full expressions preserved
             assert len(rules) == 2
-            # Both should have COSTCO as pattern (amount condition stripped in regex)
-            assert rules[0][0] == 'COSTCO'
-            assert rules[1][0] == 'COSTCO'
+            # Full expressions preserved for expr matching (amount conditions work)
+            assert rules[0][0] == 'contains("COSTCO") and amount > 200'
+            assert rules[1][0] == 'contains("COSTCO")'
         finally:
             os.unlink(f.name)
