@@ -2374,7 +2374,8 @@ def cmd_workflow(args):
         print(f"    {C.DIM}3.{C.RESET} Check progress:")
         print(f"       {C.GREEN}tally run --summary{C.RESET}")
         print()
-        print(f"    {C.YELLOW}Keep going until ALL unknown merchants are resolved!{C.RESET}")
+        print(f"    {C.YELLOW}{C.BOLD}KEEP GOING UNTIL ALL UNKNOWNS ARE RESOLVED!{C.RESET}")
+        print(f"    {C.DIM}Your report is only as good as your rules. Don't stop at 80%.{C.RESET}")
 
     section("Commands")
     cmds = [
