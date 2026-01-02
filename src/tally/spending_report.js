@@ -1787,7 +1787,7 @@ createApp({
                 pieChartInstance.update();
             }
 
-            // Update category by month (top 8 spending categories + income)
+            // Update category by month (top 8 spending categories + income + investment)
             if (categoryMonthChartInstance) {
                 const labels = monthsToShow.map(m => m.label);
                 const categories = Object.keys(agg.byCategoryByMonth).sort((a, b) => {
@@ -1809,6 +1809,16 @@ createApp({
                         label: 'Income',
                         data: incomeData,
                         backgroundColor: '#00c9a7'
+                    });
+                }
+
+                // Add investment as its own dataset (purple, like monthly chart)
+                const investmentData = monthsToShow.map(m => agg.investmentByMonth[m.key] || 0);
+                if (investmentData.some(v => v > 0)) {
+                    datasets.push({
+                        label: 'Investment',
+                        data: investmentData,
+                        backgroundColor: '#7c3aed'
                     });
                 }
 
