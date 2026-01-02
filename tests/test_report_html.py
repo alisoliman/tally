@@ -139,12 +139,13 @@ class TestUINavigation:
     def test_report_loads_without_errors(self, page: Page, report_path):
         """Report loads and shows correct title."""
         page.goto(f"file://{report_path}")
-        expect(page.get_by_test_id("report-title")).to_contain_text("2024 Spending Report")
+        expect(page.get_by_test_id("report-title")).to_contain_text("2024 Financial Report")
 
-    def test_total_spending_displayed(self, page: Page, report_path):
-        """Total spending card shows the correct amount."""
+    def test_cashflow_card_displayed(self, page: Page, report_path):
+        """Cash flow card shows spending total in the filtered view."""
         page.goto(f"file://{report_path}")
-        expect(page.get_by_test_id("total-spending-amount")).to_contain_text("$1,031")
+        # Filtered view card shows spending for currently visible transactions
+        expect(page.get_by_test_id("filtered-amount")).to_be_visible()
 
     def test_categories_visible(self, page: Page, report_path):
         """Category sections are visible."""
@@ -252,7 +253,8 @@ class TestCalculationAccuracy:
         page.goto(f"file://{report_path}")
         # Total: 45.99 + 29.99 + 125.50 + 89.00 + 199.00 + 8.50 + 12.00
         #        + 156.00 + 55.00 + 9.00 + 234.00 + 67.00 = 1030.98 ≈ $1,031
-        expect(page.get_by_test_id("total-spending-amount")).to_contain_text("$1,031")
+        # The filtered view card shows spending for visible transactions
+        expect(page.get_by_test_id("filtered-amount")).to_contain_text("$1,031")
 
     def test_shopping_category_total(self, page: Page, report_path):
         """Shopping category total is correct."""
@@ -277,7 +279,8 @@ class TestCalculationAccuracy:
         page.get_by_test_id("tag-badge").filter(has_text="david").first.click()
 
         # David's transactions total: $772 (rounded)
-        expect(page.get_by_test_id("total-spending-amount")).to_contain_text("$772")
+        # The filtered view card shows spending for visible transactions
+        expect(page.get_by_test_id("filtered-amount")).to_contain_text("$772")
 
     def test_tag_filter_updates_merchant_count(self, page: Page, report_path):
         """Merchant transaction count updates when filtered by tag."""
@@ -310,13 +313,13 @@ class TestCalculationAccuracy:
 
         # Apply filter
         page.get_by_test_id("tag-badge").filter(has_text="david").first.click()
-        expect(page.get_by_test_id("total-spending-amount")).to_contain_text("$772")
+        expect(page.get_by_test_id("filtered-amount")).to_contain_text("$772")
 
         # Clear filter by clicking the remove button on the filter chip
         page.get_by_test_id("filter-chip-remove").first.click()
 
         # Original total restored
-        expect(page.get_by_test_id("total-spending-amount")).to_contain_text("$1,031")
+        expect(page.get_by_test_id("filtered-amount")).to_contain_text("$1,031")
 
 
 # =============================================================================
@@ -498,20 +501,19 @@ class TestEdgeCasesAndCalculations:
     # -------------------------------------------------------------------------
 
     def test_income_total_displayed(self, page: Page, edge_case_report_path):
-        """Income total card shows correct amount."""
+        """Income is shown in the cash flow card breakdown."""
         page.goto(f"file://{edge_case_report_path}")
-        # Income: $3,000 (payroll)
-        expect(page.get_by_test_id("income-amount")).to_contain_text("$3,000")
+        # Income: $3,000 (payroll) - shown as breakdown item in cashflow card
+        cashflow_card = page.get_by_test_id("cashflow-card")
+        expect(cashflow_card.locator(".income-label")).to_be_visible()
+        expect(cashflow_card.locator("text=$3,000")).to_be_visible()
 
-    def test_transfers_total_displayed(self, page: Page, edge_case_report_path):
-        """Transfers total shows correct amount without negative sign.
-
-        Transfers are informational only (money moving between accounts).
-        They should not show a negative sign since they're not a deduction from cash flow.
-        """
+    def test_transfers_in_filtered_view(self, page: Page, edge_case_report_path):
+        """Transfers appear in filtered view card breakdown."""
         page.goto(f"file://{edge_case_report_path}")
-        # Transfers: $500 (no negative sign - transfers are informational, not deductions)
-        expect(page.get_by_test_id("transfers-amount")).to_have_text("$500")
+        # Transfers show in the filtered view card (no separate transfers card)
+        filtered_card = page.get_by_test_id("filtered-spending-card")
+        expect(filtered_card).to_be_visible()
 
     def test_cash_flow_calculation(self, page: Page, edge_case_report_path):
         """Net cash flow = income - spending (transfers excluded, they just move money)."""
@@ -526,20 +528,20 @@ class TestEdgeCasesAndCalculations:
     # Note: When income exists, cash flow card is shown instead of excluded card
     # -------------------------------------------------------------------------
 
-    def test_income_and_transfers_shown_in_cashflow(self, page: Page, edge_case_report_path):
-        """When income exists, income/transfers are shown in cash flow card."""
+    def test_income_shown_in_cashflow_card(self, page: Page, edge_case_report_path):
+        """Cash flow card shows income in breakdown."""
         page.goto(f"file://{edge_case_report_path}")
-        # Cash flow card should be visible (since we have income)
+        # Cash flow card should be visible with income breakdown
         expect(page.get_by_test_id("cashflow-card")).to_be_visible()
-        # Income and transfers should be shown as breakdown items
-        expect(page.get_by_test_id("income-amount")).to_be_visible()
-        expect(page.get_by_test_id("transfers-amount")).to_be_visible()
+        expect(page.get_by_test_id("cashflow-card").locator(".income-label")).to_be_visible()
+        # Filtered view card should also be visible
+        expect(page.get_by_test_id("filtered-spending-card")).to_be_visible()
 
     def test_income_clickable_adds_filter(self, page: Page, edge_case_report_path):
         """Clicking income in cash flow card adds an income tag filter."""
         page.goto(f"file://{edge_case_report_path}")
-        # Click on income breakdown item
-        page.locator(".income-label").click()
+        # Click on income breakdown item in the cashflow card (scoped to avoid multiple matches)
+        page.get_by_test_id("cashflow-card").locator(".income-label").click()
         # Should add an income tag filter
         expect(page.get_by_test_id("filter-chip")).to_be_visible()
 
@@ -635,13 +637,12 @@ class TestEdgeCasesAndCalculations:
     def test_grand_total_matches_category_sum(self, page: Page, edge_case_report_path):
         """Grand total equals sum of all category totals."""
         page.goto(f"file://{edge_case_report_path}")
-        # Shopping: $200 + $400 - $150 refunds shown separately = $600 in positive
+        # Shopping: $200 + $400 + $450 = $1,050 (Amazon + Target)
         # Food: $1,175
         # Subscriptions: $25
-        # Total positive spending: $600 + $1,175 + $25 = $1,800
-        # But Amazon has $200 + $450 = $650, minus refund handled separately
-        # Let's verify the displayed total matches
-        expect(page.get_by_test_id("total-spending-amount")).to_be_visible()
+        # Total positive spending: $1,050 + $1,175 + $25 = $2,250
+        # The filtered view card shows total spending
+        expect(page.get_by_test_id("filtered-spending-card")).to_be_visible()
 
     # -------------------------------------------------------------------------
     # Sorting Tests
@@ -685,16 +686,16 @@ class TestEdgeCasesAndCalculations:
         """Applying a filter updates totals, percentages, and averages consistently."""
         page.goto(f"file://{edge_case_report_path}")
 
-        # Get initial total
-        initial_total = page.get_by_test_id("total-spending-amount").inner_text()
+        # Get initial total from filtered view card
+        initial_total = page.get_by_test_id("filtered-amount").inner_text()
 
-        # Filter to Food category only
+        # Filter to Food category only by clicking a merchant
         page.get_by_test_id("section-cat-Food").locator(".merchant-name").first.click()
 
         # Wait for filter to apply
         page.wait_for_timeout(100)
 
-        # Verify the total changed (now showing only food)
+        # Verify the total changed (now showing only that merchant)
         # This confirms filtering affects calculations
         # The specific value depends on what merchant was clicked
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Spending Report</title>
+    <title>Financial Report</title>
     <style>/* CSS_PLACEHOLDER */</style>
 </head>
 <body>
@@ -59,67 +59,69 @@
                 </div>
             </div>
 
-            <!-- Help Section -->
-            <div class="help-section" :class="{ collapsed: helpCollapsed }">
-                <div class="help-section-header" @click="helpCollapsed = !helpCollapsed">
-                    <h3>How to Read This Report</h3>
-                    <span class="toggle">{{ helpCollapsed ? '▶' : '▼' }}</span>
-                </div>
-                <div class="help-section-content">
-                    <span class="label">Categories:</span>
-                    <span class="value">Merchants are grouped by their assigned category from merchant_categories.csv</span>
-                    <span class="label">Terms:</span>
-                    <span class="value"><code>YTD</code> year-to-date total · <code>Count</code> number of transactions</span>
-                    <span class="label">Filters:</span>
-                    <span class="value">Click on categories, tags, or locations to filter. Use search to find specific merchants.</span>
-                </div>
-            </div>
-
             <!-- Summary Cards -->
             <div class="summary-grid">
-                <div class="card total" data-testid="total-spending-card">
-                    <h2>Total Spending (YTD)</h2>
-                    <div class="amount" data-testid="total-spending-amount">{{ formatCurrency(grandTotal) }}</div>
-                    <div class="breakdown">
-                        <div class="breakdown-item" v-if="creditsTotal > 0">
-                            <span class="name credit-label">Credits Applied</span>
-                            <span class="value">+{{ formatCurrency(creditsTotal) }}</span>
-                        </div>
-                        <div class="breakdown-item" v-if="uncategorizedTotal > 0">
-                            <span class="name">Uncategorized</span>
-                            <span class="value">{{ formatCurrency(uncategorizedTotal) }} ({{ formatPct(uncategorizedTotal, grandTotal) }})</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Cash Flow card - show when there's income -->
-                <div class="card cashflow" v-if="incomeCount > 0" data-testid="cashflow-card">
+                <div class="card cashflow" data-testid="cashflow-card">
                     <h2>Cash Flow</h2>
-                    <div class="amount" data-testid="cashflow-amount" :class="{ positive: netCashFlow >= 0, negative: netCashFlow < 0 }">
-                        {{ netCashFlow >= 0 ? '+' : '' }}{{ formatCurrency(netCashFlow) }}
+                    <div class="amount" data-testid="cashflow-amount" :class="{ positive: cashFlow >= 0, negative: cashFlow < 0 }">
+                        {{ cashFlow >= 0 ? '+' : '' }}{{ formatCurrency(cashFlow) }}
                     </div>
                     <div class="breakdown">
                         <div class="breakdown-item clickable" @click="addFilter('income', 'tag')">
                             <span class="name income-label">Income</span>
-                            <span class="value" data-testid="income-amount">+{{ formatCurrency(Math.abs(incomeTotal)) }}</span>
+                            <span class="value">+{{ formatCurrency(incomeTotal) }}</span>
                         </div>
                         <div class="breakdown-item">
                             <span class="name">Spending</span>
-                            <span class="value" data-testid="spending-in-cashflow">-{{ formatCurrency(grandTotal) }}</span>
+                            <span class="value">-{{ formatCurrency(spendingTotal) }}</span>
                         </div>
-                        <div class="breakdown-item clickable" v-if="transfersCount > 0" @click="addFilter('transfer', 'tag')">
-                            <span class="name transfers-label">Transfers</span>
-                            <span class="value" data-testid="transfers-amount">{{ formatCurrency(Math.abs(transfersTotal)) }}</span>
+                        <div class="breakdown-item" v-if="dataCreditsTotal > 0">
+                            <span class="name">Credits</span>
+                            <span class="value">+{{ formatCurrency(dataCreditsTotal) }}</span>
                         </div>
                     </div>
                 </div>
-                <!-- Excluded card - show when there are excluded but no income -->
-                <div class="card excluded-summary" v-else-if="filteredExcludedCount > 0" data-testid="excluded-card">
-                    <h2>Excluded</h2>
-                    <div class="amount" data-testid="excluded-total">{{ formatCurrency(excludedTotal) }}</div>
+                <div class="card investment" data-testid="investment-card" v-if="investmentTotal > 0">
+                    <h2>Investments</h2>
+                    <div class="amount">
+                        {{ formatCurrency(investmentTotal) }}
+                    </div>
                     <div class="breakdown">
-                        <div class="breakdown-item clickable" data-testid="show-excluded-link" @click="scrollToExcluded">
-                            <span class="name">Not included in spending</span>
-                            <span class="value" data-testid="excluded-count">{{ filteredExcludedCount }} transactions</span>
+                        <div class="breakdown-item clickable" @click="addFilter('investment', 'tag')">
+                            <span class="name">401K, IRA, etc.</span>
+                            <span class="value">{{ formatCurrency(investmentTotal) }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card filtered-spending" data-testid="filtered-spending-card">
+                    <h2>Filtered View</h2>
+                    <div class="amount" data-testid="filtered-amount" :class="{ positive: filteredViewTotals.hasIncome && filteredViewTotals.net >= 0 }">
+                        {{ filteredViewTotals.hasIncome && filteredViewTotals.net >= 0 ? '+' : '' }}{{ formatCurrency(filteredViewTotals.net) }}
+                    </div>
+                    <div class="breakdown">
+                        <div class="breakdown-item" v-if="filteredViewTotals.income > 0">
+                            <span class="name income-label">Income</span>
+                            <span class="value">+{{ formatCurrency(filteredViewTotals.income) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="filteredViewTotals.spending > 0">
+                            <span class="name">Spending</span>
+                            <span class="value">{{ formatCurrency(filteredViewTotals.spending) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="filteredViewTotals.credits > 0">
+                            <span class="name">Credits</span>
+                            <span class="value">+{{ formatCurrency(filteredViewTotals.credits) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="filteredViewTotals.investment > 0">
+                            <span class="name">Investment</span>
+                            <span class="value">{{ formatCurrency(filteredViewTotals.investment) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="filteredViewTotals.transfers !== 0">
+                            <span class="name">Transfers</span>
+                            <span class="value">{{ filteredViewTotals.transfers >= 0 ? '+' : '' }}{{ formatCurrency(filteredViewTotals.transfers) }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="name">Transactions</span>
+                            <span class="value">{{ filteredViewTotals.count.toLocaleString() }}</span>
                         </div>
                     </div>
                 </div>
@@ -130,19 +132,19 @@
                 <div class="section-header" @click="chartsCollapsed = !chartsCollapsed">
                     <h2>
                         <span class="toggle">{{ chartsCollapsed ? '▶' : '▼' }}</span>
-                        Spending Trends
+                        Transaction Trends
                     </h2>
                 </div>
                 <div class="section-content" :class="{ collapsed: chartsCollapsed }">
                     <div class="charts-grid">
                         <div class="chart-container">
-                            <h3>Monthly Spending Trend</h3>
+                            <h3>Monthly Trend</h3>
                             <div class="chart-wrapper">
                                 <canvas ref="monthlyChart"></canvas>
                             </div>
                         </div>
                         <div class="chart-container">
-                            <h3>Spending by Category</h3>
+                            <h3>By Category</h3>
                             <div class="chart-wrapper">
                                 <canvas ref="categoryPieChart"></canvas>
                             </div>
@@ -242,26 +244,6 @@
                 :collapsed-sections="collapsedSections"
                 :sort-config="sortConfig"
                 :expanded-items="expandedMerchants"
-                :extra-field-matches="extraFieldMatches"
-                :toggle-section="toggleSection"
-                :toggle-sort="toggleSort"
-                :format-currency="formatCurrency"
-                :format-date="formatDate"
-                :add-filter="addFilter"
-                :highlight-description="highlightDescription"
-                :tag-color="tagColor"
-            ></merchant-section>
-
-            <!-- Excluded Section -->
-            <merchant-section
-                v-if="groupedExcluded.length > 0"
-                section-key="excluded"
-                title="Excluded"
-                :items="groupedExcluded"
-                subtitle="(not included in spending)"
-                :collapsed-sections="collapsedSections"
-                :sort-config="sortConfig"
-                :expanded-items="expandedExcluded"
                 :extra-field-matches="extraFieldMatches"
                 :toggle-section="toggleSection"
                 :toggle-sort="toggleSort"

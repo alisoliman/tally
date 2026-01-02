@@ -397,10 +397,18 @@ def write_summary_file_vue(stats, filepath, year=2025, currency_format="${amount
         'dataThrough': latest_date,
         'sections': sections,
         'categoryView': category_view,
-        # Excluded transactions for transparency
-        'excludedTransactions': stats.get('excluded_transactions', []),
-        'excludedCount': stats.get('excluded_count', 0),
-        'excludedTotal': stats.get('excluded_total', 0),
+        # Cash flow (excludes transfers and investments)
+        # All values are positive; cash_flow = income - spending + credits
+        'incomeTotal': stats.get('income_total', 0),
+        'spendingTotal': stats.get('spending_total', 0),
+        'creditsTotal': stats.get('credits_total', 0),  # Refunds (positive value)
+        'cashFlow': stats.get('cash_flow', 0),
+        # Transfers (money moving between accounts, both positive)
+        'transfersIn': stats.get('transfers_in', 0),
+        'transfersOut': stats.get('transfers_out', 0),  # Positive value
+        'transfersNet': stats.get('transfers_net', 0),  # in - out
+        # Investments (401K, IRA - excluded from spending)
+        'investmentTotal': stats.get('investment_total', 0),
     }
 
     # Assemble final HTML

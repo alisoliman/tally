@@ -3,6 +3,90 @@
 
 const { createApp, ref, reactive, computed, watch, onMounted, nextTick, defineComponent } = Vue;
 
+// =============================================================================
+// TRANSACTION CLASSIFICATION - Mirrors Python classification.py
+// =============================================================================
+
+const INCOME_TAG = 'income';
+const TRANSFER_TAG = 'transfer';
+const INVESTMENT_TAG = 'investment';
+
+const SPECIAL_TAGS = new Set([INCOME_TAG, TRANSFER_TAG, INVESTMENT_TAG]);
+const EXCLUDED_FROM_SPENDING = new Set([INCOME_TAG, TRANSFER_TAG, INVESTMENT_TAG]);
+
+function getTagsLower(tags) {
+    return new Set((tags || []).map(t => t.toLowerCase()));
+}
+
+function isIncome(tags) {
+    return getTagsLower(tags).has(INCOME_TAG);
+}
+
+function isTransfer(tags) {
+    return getTagsLower(tags).has(TRANSFER_TAG);
+}
+
+function isInvestment(tags) {
+    return getTagsLower(tags).has(INVESTMENT_TAG);
+}
+
+function isExcludedFromSpending(tags) {
+    const tagsLower = getTagsLower(tags);
+    for (const tag of EXCLUDED_FROM_SPENDING) {
+        if (tagsLower.has(tag)) return true;
+    }
+    return false;
+}
+
+/**
+ * Categorize a transaction amount into appropriate bucket.
+ * All returned values are positive (or zero).
+ * Mirrors Python classification.categorize_amount()
+ */
+function categorizeAmount(amount, tags) {
+    const result = {
+        income: 0,
+        investment: 0,
+        transferIn: 0,
+        transferOut: 0,
+        spending: 0,
+        credits: 0
+    };
+
+    const tagsLower = getTagsLower(tags);
+
+    if (tagsLower.has(INCOME_TAG)) {
+        result.income = Math.abs(amount);
+    } else if (tagsLower.has(INVESTMENT_TAG)) {
+        result.investment = Math.abs(amount);
+    } else if (tagsLower.has(TRANSFER_TAG)) {
+        if (amount > 0) {
+            result.transferIn = amount;
+        } else {
+            result.transferOut = Math.abs(amount);
+        }
+    } else {
+        // Normal spending/credits
+        if (amount > 0) {
+            result.spending = amount;
+        } else {
+            result.credits = Math.abs(amount);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Calculate cash flow from totals.
+ * Mirrors Python classification.calculate_cash_flow()
+ */
+function calculateCashFlow(income, spending, credits) {
+    return income - spending + credits;
+}
+
+// =============================================================================
+
 // ========== REUSABLE COMPONENTS ==========
 
 // Sortable merchant/group section component
@@ -151,7 +235,7 @@ const MerchantSection = defineComponent({
                                         </span>
                                     </td>
                                     <td class="category" :class="{ clickable: categoryMode }"
-                                        @click.stop="categoryMode && addFilter(item.subcategory, 'category')">
+                                        @click.stop="categoryMode && addFilter(item.subcategory, 'subcategory')">
                                         {{ item.subcategory }}
                                     </td>
                                     <!-- Category mode: Count then Tags; Other modes: Tags then Count -->
@@ -287,15 +371,15 @@ const MerchantSection = defineComponent({
             if (this.creditMode) return 'credit-amount';
             const tags = item.tags || [];
             const total = item.total || item.filteredTotal || 0;
-            if (tags.includes('income')) return 'income-amount';
-            if (total < 0 && !tags.includes('income')) return 'negative-amount';
+            if (isIncome(tags)) return 'income-amount';
+            if (total < 0 && !isIncome(tags)) return 'negative-amount';
             return '';
         },
         getTxnAmountClass(txn) {
             if (this.creditMode) return 'credit-amount';
             const tags = txn.tags || [];
-            if (tags.includes('income')) return 'income-amount';
-            if (txn.amount < 0 && !tags.includes('income')) return 'negative-amount';
+            if (isIncome(tags)) return 'income-amount';
+            if (txn.amount < 0 && !isIncome(tags)) return 'negative-amount';
             return '';
         },
         formatAmount(item) {
@@ -304,7 +388,7 @@ const MerchantSection = defineComponent({
             }
             const tags = item.tags || [];
             const total = item.total || item.filteredTotal || 0;
-            if (tags.includes('income')) {
+            if (isIncome(tags)) {
                 return '+' + this.formatCurrency(Math.abs(total));
             }
             return this.formatCurrency(total);
@@ -314,7 +398,7 @@ const MerchantSection = defineComponent({
                 return '+' + this.formatCurrency(Math.abs(txn.amount));
             }
             const tags = txn.tags || [];
-            if (tags.includes('income')) {
+            if (isIncome(tags)) {
                 return '+' + this.formatCurrency(Math.abs(txn.amount));
             }
             return this.formatCurrency(txn.amount);
@@ -394,7 +478,7 @@ createApp({
         const spendingData = computed(() => window.spendingData || { sections: {}, year: 2025, numMonths: 12 });
 
         // Report title and subtitle
-        const title = computed(() => `${spendingData.value.year} Spending Report`);
+        const title = computed(() => `${spendingData.value.year} Financial Report`);
         const subtitle = computed(() => {
             const data = spendingData.value;
             const sources = data.sources || [];
@@ -550,10 +634,19 @@ createApp({
             );
         });
 
-        // Positive categories only (for main display, excludes credits/refunds)
+        // Categories to display - show all with non-negative totals
+        // Excludes: negative totals (credits) and income/transfer/investment categories
         const positiveCategoryView = computed(() => {
             const result = {};
+            // These category names indicate income/transfer/investment - exclude from main display
+            const excludedCategories = new Set(['income', 'transfer', 'transfers', 'investment', 'investments']);
+
             for (const [catName, category] of Object.entries(filteredCategoryView.value)) {
+                // Skip excluded categories (income, transfer, investment)
+                if (excludedCategories.has(catName.toLowerCase())) {
+                    continue;
+                }
+                // Include only positive totals (negative = credits section)
                 if (category.filteredTotal >= 0) {
                     result[catName] = category;
                 }
@@ -592,11 +685,17 @@ createApp({
         }
 
         // Credit merchants (negative totals, shown separately)
+        // Excludes income and transfer tagged merchants
         const unsortedCreditMerchants = computed(() => {
             const credits = [];
             for (const [catName, category] of Object.entries(filteredCategoryView.value)) {
                 for (const [subName, subcat] of Object.entries(category.filteredSubcategories || {})) {
                     for (const [merchantId, merchant] of Object.entries(subcat.filteredMerchants || {})) {
+                        const tags = merchant.tags || [];
+                        // Exclude merchants tagged as income/transfer/investment
+                        if (isExcludedFromSpending(tags)) {
+                            continue;
+                        }
                         if (merchant.filteredTotal < 0) {
                             credits.push({
                                 id: merchantId,
@@ -682,10 +781,21 @@ createApp({
         });
 
         // Grand total (from category view to avoid double-counting across sections)
+        // Excludes income, transfer, and investment tagged transactions
         const grandTotal = computed(() => {
-            // Sum totals from category view (unique merchants only)
-            return Object.values(filteredCategoryView.value)
-                .reduce((sum, cat) => sum + (cat.filteredTotal || 0), 0);
+            let total = 0;
+            for (const cat of Object.values(filteredCategoryView.value)) {
+                for (const subcat of Object.values(cat.filteredSubcategories || cat.subcategories || {})) {
+                    for (const merchant of Object.values(subcat.filteredMerchants || subcat.merchants || {})) {
+                        const tags = merchant.tags || [];
+                        // Exclude income/transfer/investment tagged merchants from spending
+                        if (!isExcludedFromSpending(tags)) {
+                            total += merchant.filteredTotal || merchant.total || 0;
+                        }
+                    }
+                }
+            }
+            return total;
         });
 
         // Credits total (sum of all credit merchants, shown as positive)
@@ -698,98 +808,135 @@ createApp({
             return grandTotal.value + creditsTotal.value;
         });
 
+        // Filtered view totals - sum of ALL matching transactions
+        // Simple: whatever matches the filters gets counted and categorized
+        const filteredViewTotals = computed(() => {
+            // Accumulate totals using same structure as categorizeAmount()
+            const totals = {
+                income: 0,
+                investment: 0,
+                transferIn: 0,
+                transferOut: 0,
+                spending: 0,
+                credits: 0
+            };
+            let count = 0;
+
+            // Count ALL transactions from ALL visible merchants
+            for (const cat of Object.values(filteredCategoryView.value)) {
+                for (const subcat of Object.values(cat.filteredSubcategories || cat.subcategories || {})) {
+                    for (const merchant of Object.values(subcat.filteredMerchants || subcat.merchants || {})) {
+                        const tags = merchant.tags || [];
+                        const txns = merchant.filteredTxns || merchant.transactions || [];
+
+                        for (const txn of txns) {
+                            // Use centralized categorizeAmount() for consistent classification
+                            const c = categorizeAmount(txn.amount || 0, tags);
+                            totals.income += c.income;
+                            totals.investment += c.investment;
+                            totals.transferIn += c.transferIn;
+                            totals.transferOut += c.transferOut;
+                            totals.spending += c.spending;
+                            totals.credits += c.credits;
+                            count++;
+                        }
+                    }
+                }
+            }
+
+            // Net transfers
+            const transfers = totals.transferIn - totals.transferOut;
+
+            // Context-aware net calculation:
+            // - With income: cash flow (income - spending + credits)
+            // - Without income: net spending (spending - credits)
+            let net;
+            if (totals.income > 0) {
+                // Cash flow view
+                net = calculateCashFlow(totals.income, totals.spending, totals.credits);
+            } else {
+                // Spending view - show net spending as positive
+                net = totals.spending - totals.credits;
+            }
+
+            return {
+                spending: totals.spending,
+                credits: totals.credits,
+                income: totals.income,
+                investment: totals.investment,
+                transfers,
+                count,
+                net,
+                hasIncome: totals.income > 0  // For display formatting
+            };
+        });
+
+        // Cash flow totals from data (excludes transfers and investments)
+        const incomeTotal = computed(() => spendingData.value.incomeTotal || 0);
+        const spendingTotal = computed(() => spendingData.value.spendingTotal || 0);
+        const dataCreditsTotal = computed(() => spendingData.value.creditsTotal || 0);
+        const cashFlow = computed(() => spendingData.value.cashFlow || 0);
+        // Transfer totals (money moving between accounts)
+        const transfersIn = computed(() => spendingData.value.transfersIn || 0);
+        const transfersOut = computed(() => spendingData.value.transfersOut || 0);
+        const transfersNet = computed(() => spendingData.value.transfersNet || 0);
+        // Investment total (401K, IRA - excluded from spending)
+        const investmentTotal = computed(() => spendingData.value.investmentTotal || 0);
+
         // Uncategorized total
         const uncategorizedTotal = computed(() => {
             return sectionTotals.value.unknown || 0;
         });
 
-        // Excluded transactions split into Income and Transfers
-        const excludedTransactions = computed(() => {
-            return spendingData.value.excludedTransactions || [];
-        });
-
-        // Helper to check if excluded transaction passes all active filters
-        // Excluded transactions have merchant/category/tags directly on the transaction object
-        function passesExcludedFilters(txn) {
-            const includes = activeFilters.value.filter(f => f.mode === 'include');
-            const excludes = activeFilters.value.filter(f => f.mode === 'exclude');
-
-            // Helper to match a single filter against the transaction
-            function matchesExcludedFilter(t, filter) {
-                const text = filter.text.toLowerCase();
-                switch (filter.type) {
-                    case 'merchant':
-                        return (t.merchant || '').toLowerCase() === text;
-                    case 'category':
-                        return (t.category || '').toLowerCase().includes(text) ||
-                               (t.subcategory || '').toLowerCase().includes(text);
-                    case 'location':
-                        return (t.location || '').toLowerCase() === text;
-                    case 'month':
-                        return monthMatches(t.month, filter.text);
-                    case 'tag':
-                        return (t.tags || []).some(tag => tag.toLowerCase() === text);
-                    case 'text':
-                        return (t.description || '').toLowerCase().includes(text);
-                    default:
-                        return false;
+        // Income and Transfer counts from merchants by tag
+        const incomeCount = computed(() => {
+            let count = 0;
+            for (const cat of Object.values(filteredCategoryView.value)) {
+                for (const subcat of Object.values(cat.subcategories || {})) {
+                    for (const merchant of Object.values(subcat.merchants || {})) {
+                        if ((merchant.tags || []).includes('income')) {
+                            count += (merchant.filteredTxns || merchant.transactions || []).length;
+                        }
+                    }
                 }
             }
+            return count;
+        });
 
-            // Check excludes first
-            for (const f of excludes) {
-                if (matchesExcludedFilter(txn, f)) return false;
+        const transfersCount = computed(() => {
+            let count = 0;
+            for (const cat of Object.values(filteredCategoryView.value)) {
+                for (const subcat of Object.values(cat.subcategories || {})) {
+                    for (const merchant of Object.values(subcat.merchants || {})) {
+                        if ((merchant.tags || []).includes('transfer')) {
+                            count += (merchant.filteredTxns || merchant.transactions || []).length;
+                        }
+                    }
+                }
             }
+            return count;
+        });
 
-            // Group includes by type
-            const byType = {};
-            includes.forEach(f => {
-                if (!byType[f.type]) byType[f.type] = [];
-                byType[f.type].push(f);
-            });
-
-            // AND across types, OR within type
-            for (const [type, filters] of Object.entries(byType)) {
-                const anyMatch = filters.some(f => matchesExcludedFilter(txn, f));
-                if (!anyMatch) return false;
+        // All transactions grouped by merchant (for the Transactions section)
+        const allTransactions = computed(() => {
+            const transactions = [];
+            for (const cat of Object.values(filteredCategoryView.value)) {
+                for (const subcat of Object.values(cat.subcategories || {})) {
+                    for (const merchant of Object.values(subcat.merchants || {})) {
+                        const txns = merchant.filteredTxns || merchant.transactions || [];
+                        for (const txn of txns) {
+                            transactions.push({
+                                ...txn,
+                                merchant: merchant.displayName,
+                                category: merchant.category,
+                                subcategory: merchant.subcategory,
+                                tags: merchant.tags || []
+                            });
+                        }
+                    }
+                }
             }
-
-            return true;
-        }
-
-        // Filtered excluded transactions (respects all filters)
-        const filteredExcluded = computed(() => {
-            return excludedTransactions.value.filter(t => passesExcludedFilters(t));
-        });
-        const excludedTotal = computed(() => {
-            return filteredExcluded.value.reduce((sum, t) => sum + t.amount, 0);
-        });
-        const filteredExcludedCount = computed(() => filteredExcluded.value.length);
-
-        // Income and Transfer totals (from excluded transactions, by tag)
-        const incomeTransactions = computed(() => {
-            return excludedTransactions.value.filter(t =>
-                t.tags && t.tags.includes('income')
-            );
-        });
-        const incomeTotal = computed(() => {
-            return incomeTransactions.value.reduce((sum, t) => sum + t.amount, 0);
-        });
-        const incomeCount = computed(() => incomeTransactions.value.length);
-
-        const transferTransactions = computed(() => {
-            return excludedTransactions.value.filter(t =>
-                t.tags && t.tags.includes('transfer')
-            );
-        });
-        const transfersTotal = computed(() => {
-            return transferTransactions.value.reduce((sum, t) => sum + t.amount, 0);
-        });
-        const transfersCount = computed(() => transferTransactions.value.length);
-
-        // Net cash flow (Income - Spending; transfers excluded since they just move money between accounts)
-        const netCashFlow = computed(() => {
-            return Math.abs(incomeTotal.value) - grandTotal.value;
+            return transactions;
         });
 
         // Group transactions by merchant helper (returns unsorted)
@@ -815,21 +962,9 @@ createApp({
             return Object.values(groups);
         }
 
-        const unsortedExcluded = computed(() => groupByMerchant(filteredExcluded.value));
-        const groupedExcluded = computed(() => sortGroupedArray(unsortedExcluded.value, 'excluded'));
-        const expandedExcluded = reactive(new Set());
-        const showExcluded = ref(false);
-
-        // Scroll to excluded section
-        function scrollToExcluded() {
-            showExcluded.value = true;
-            nextTick(() => {
-                const section = document.querySelector('.excluded-section');
-                if (section) {
-                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        }
+        const unsortedTransactions = computed(() => groupByMerchant(allTransactions.value));
+        const groupedTransactions = computed(() => sortGroupedArray(unsortedTransactions.value, 'transactions'));
+        const expandedTransactions = reactive(new Set());
 
         // Number of months in filter (for monthly averages)
         const numFilteredMonths = computed(() => {
@@ -850,9 +985,11 @@ createApp({
         });
 
         // Chart data aggregations - always uses categoryView for consistent data
+        // Includes spending and income, excludes transfers (money moving between accounts)
         const chartAggregations = computed(() => {
-            const byMonth = {};
-            const byCategory = {};
+            const spendingByMonth = {};
+            const incomeByMonth = {};
+            const byCategory = {};  // Spending only (income doesn't have meaningful categories)
             const byCategoryByMonth = {};
 
             // Use categoryView which always has data (doesn't require views_file)
@@ -860,26 +997,33 @@ createApp({
             for (const [catName, category] of Object.entries(categoryView)) {
                 for (const subcat of Object.values(category.filteredSubcategories || {})) {
                     for (const merchant of Object.values(subcat.filteredMerchants || {})) {
+                        const tags = merchant.tags || [];
+
                         for (const txn of merchant.filteredTxns || []) {
-                            // Skip negative amounts (credits/refunds) - only show spending in charts
-                            if (txn.amount <= 0) continue;
+                            // Use centralized categorization
+                            const c = categorizeAmount(txn.amount, tags);
 
-                            // By month
-                            byMonth[txn.month] = (byMonth[txn.month] || 0) + txn.amount;
+                            // Track spending by month and category
+                            if (c.spending > 0) {
+                                spendingByMonth[txn.month] = (spendingByMonth[txn.month] || 0) + c.spending;
+                                byCategory[catName] = (byCategory[catName] || 0) + c.spending;
+                                if (!byCategoryByMonth[catName]) byCategoryByMonth[catName] = {};
+                                byCategoryByMonth[catName][txn.month] =
+                                    (byCategoryByMonth[catName][txn.month] || 0) + c.spending;
+                            }
 
-                            // By main category
-                            byCategory[catName] = (byCategory[catName] || 0) + txn.amount;
+                            // Track income by month (no category breakdown)
+                            if (c.income > 0) {
+                                incomeByMonth[txn.month] = (incomeByMonth[txn.month] || 0) + c.income;
+                            }
 
-                            // By category by month
-                            if (!byCategoryByMonth[catName]) byCategoryByMonth[catName] = {};
-                            byCategoryByMonth[catName][txn.month] =
-                                (byCategoryByMonth[catName][txn.month] || 0) + txn.amount;
+                            // Transfers excluded - they're just money moving between accounts
                         }
                     }
                 }
             }
 
-            return { byMonth, byCategory, byCategoryByMonth };
+            return { spendingByMonth, incomeByMonth, byCategory, byCategoryByMonth };
         });
 
         // Map category names to colors (matches pie chart order)
@@ -1069,9 +1213,14 @@ createApp({
             const q = searchQuery.value.toLowerCase().trim();
             if (!q) return [];
 
+            // Priority order for autocomplete types (lower = higher priority)
+            const typePriority = { tag: 0, category: 1, subcategory: 2, location: 3, merchant: 4 };
+
             // Get matching autocomplete items (merchants, categories, etc.)
+            // Sort by type priority so tags/categories appear before merchants
             const matches = autocompleteItems.value
                 .filter(item => item.displayText.toLowerCase().includes(q))
+                .sort((a, b) => (typePriority[a.type] ?? 5) - (typePriority[b.type] ?? 5))
                 .slice(0, 8);
 
             // Add "Search transactions for: X" option at the end
@@ -1458,18 +1607,26 @@ createApp({
                     type: 'bar',
                     data: {
                         labels,
-                        datasets: [{
-                            label: 'Monthly Spending',
-                            data: [],
-                            backgroundColor: '#4facfe',
-                            borderRadius: 4
-                        }]
+                        datasets: [
+                            {
+                                label: 'Spending',
+                                data: [],
+                                backgroundColor: '#4facfe',
+                                borderRadius: 4
+                            },
+                            {
+                                label: 'Income',
+                                data: [],
+                                backgroundColor: '#00c9a7',
+                                borderRadius: 4
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: { display: false }
+                            legend: { display: true, position: 'top' }
                         },
                         scales: {
                             y: {
@@ -1593,13 +1750,15 @@ createApp({
             const agg = chartAggregations.value;
             const monthsToShow = filteredMonthsForCharts.value;
 
-            // Update monthly trend
+            // Update monthly trend (spending and income)
             if (monthlyChartInstance) {
                 const labels = monthsToShow.map(m => m.label);
-                const data = monthsToShow.map(m => agg.byMonth[m.key] || 0);
-                const maxVal = Math.max(...data, 1); // At least 1 to avoid 0
+                const spendingData = monthsToShow.map(m => agg.spendingByMonth[m.key] || 0);
+                const incomeData = monthsToShow.map(m => agg.incomeByMonth[m.key] || 0);
+                const maxVal = Math.max(...spendingData, ...incomeData, 1);
                 monthlyChartInstance.data.labels = labels;
-                monthlyChartInstance.data.datasets[0].data = data;
+                monthlyChartInstance.data.datasets[0].data = spendingData;
+                monthlyChartInstance.data.datasets[1].data = incomeData;
                 monthlyChartInstance.options.scales.y.suggestedMax = maxVal * 1.1;
                 monthlyChartInstance.update();
             }
@@ -1614,20 +1773,30 @@ createApp({
                 pieChartInstance.update();
             }
 
-            // Update category by month (top 8 categories only)
+            // Update category by month (top 8 spending categories + income)
             if (categoryMonthChartInstance) {
                 const labels = monthsToShow.map(m => m.label);
                 const categories = Object.keys(agg.byCategoryByMonth).sort((a, b) => {
                     const totalA = Object.values(agg.byCategoryByMonth[a]).reduce((s, v) => s + v, 0);
                     const totalB = Object.values(agg.byCategoryByMonth[b]).reduce((s, v) => s + v, 0);
                     return totalB - totalA;
-                }).slice(0, 8); // Top 8 categories
+                }).slice(0, 8); // Top 8 spending categories
 
                 const datasets = categories.map((cat, i) => ({
                     label: cat,
                     data: monthsToShow.map(m => agg.byCategoryByMonth[cat][m.key] || 0),
                     backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length]
                 }));
+
+                // Add income as its own dataset (green, like monthly chart)
+                const incomeData = monthsToShow.map(m => agg.incomeByMonth[m.key] || 0);
+                if (incomeData.some(v => v > 0)) {
+                    datasets.push({
+                        label: 'Income',
+                        data: incomeData,
+                        backgroundColor: '#00c9a7'
+                    });
+                }
 
                 // Calculate max for stacked bar (sum of all categories per month)
                 const monthTotals = monthsToShow.map((m, idx) =>
@@ -1718,7 +1887,7 @@ createApp({
             // State
             activeFilters, expandedMerchants, extraFieldMatches, collapsedSections, searchQuery,
             showAutocomplete, autocompleteIndex, isScrolled, isDarkTheme, chartsCollapsed, helpCollapsed,
-            showExcluded, currentView, sortConfig,
+            currentView, sortConfig,
             // Refs
             monthlyChart, categoryPieChart, categoryByMonthChart,
             // Computed
@@ -1727,17 +1896,22 @@ createApp({
             sectionTotals, grandTotal, grossSpending, creditsTotal, uncategorizedTotal,
             numFilteredMonths, filteredAutocomplete, availableMonths,
             categoryColorMap, tagColor,
-            // Excluded transactions
-            excludedTotal, filteredExcludedCount, groupedExcluded, expandedExcluded,
-            // Cash flow
-            incomeTotal, incomeCount, transfersTotal, transfersCount, netCashFlow,
+            // Cash flow, transfers, and investments
+            incomeTotal, spendingTotal, dataCreditsTotal, cashFlow,
+            transfersIn, transfersOut, transfersNet,
+            incomeCount, transfersCount,
+            investmentTotal,
+            // Filtered view card
+            filteredViewTotals,
+            // All transactions section
+            groupedTransactions, expandedTransactions,
             // Methods
             addFilter, removeFilter, toggleFilterMode, clearFilters, addMonthFilter,
             toggleExpand, toggleSection, toggleSort, sortedMerchants,
             formatCurrency, formatDate, formatMonthLabel, formatPct, filterTypeChar, getLocationClass,
             highlightDescription,
             onSearchInput, onSearchKeydown, selectAutocompleteItem,
-            toggleTheme, scrollToExcluded
+            toggleTheme
         };
     }
 })

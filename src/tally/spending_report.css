@@ -1340,6 +1340,14 @@ section:nth-child(5) { animation-delay: 0.4s; }
     color: var(--accent-blue);
 }
 
+/* Filtered View Card */
+.card.filtered-spending {
+    border-left: 3px solid var(--accent-purple, #9b59b6);
+}
+.card.filtered-spending h2 {
+    color: var(--accent-purple, #9b59b6);
+}
+
 /* Income Section */
 .income-section {
     margin-top: 2rem;

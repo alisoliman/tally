@@ -6,6 +6,7 @@ import os
 import sys
 
 from ..cli import C, find_config_dir
+from ..classification import SPECIAL_TAGS
 from ..config_loader import load_config
 from ..merchant_utils import get_all_rules, diagnose_rules, get_transforms
 
@@ -286,8 +287,7 @@ def cmd_diag(args):
                 rules_with_let = [r for r in engine.rules if r.let_bindings]
                 rules_with_field = [r for r in engine.rules if r.fields]
 
-                # Special tags that affect spending analysis
-                SPECIAL_TAGS = {'income', 'refund', 'transfer'}
+                # Special tags that affect spending analysis (from classification module)
                 special_tags_used = all_tags & SPECIAL_TAGS
 
                 print()

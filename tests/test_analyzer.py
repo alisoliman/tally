@@ -992,8 +992,8 @@ class TestSpecialTags:
             })
         return transactions
 
-    def test_income_tag_excludes_from_spending(self):
-        """Transactions with 'income' tag are excluded from spending analysis."""
+    def test_income_tag_tracked_separately(self):
+        """Transactions with 'income' tag are tracked in income_total, not spending."""
         from tally.analyzer import analyze_transactions
 
         txns = self._create_transactions([
@@ -1004,34 +1004,34 @@ class TestSpecialTags:
 
         stats = analyze_transactions(txns)
 
-        # Income should be excluded
-        assert stats['excluded_count'] == 1
-        assert stats['excluded_transactions'][0]['merchant'] == 'PAYCHECK'
+        # Income should be tracked separately
+        assert stats['income_total'] == 2000.00
         # Spending should only include grocery + coffee = $55
-        total_spending = sum(data['total'] for data in stats['by_category'].values())
-        assert total_spending == 55.00
+        assert stats['spending_total'] == 55.00
+        # Cash flow = income - spending
+        assert stats['cash_flow'] == 2000.00 - 55.00
 
-    def test_transfer_tag_excludes_from_spending(self):
-        """Transactions with 'transfer' tag are excluded from spending analysis."""
+    def test_transfer_tag_tracked_separately(self):
+        """Transactions with 'transfer' tag are tracked in transfers, not spending."""
         from tally.analyzer import analyze_transactions
 
         txns = self._create_transactions([
             ('GROCERY STORE', 50.00, 'Food', []),
-            ('CC PAYMENT THANK YOU', 500.00, 'Finance', ['transfer']),
+            ('CC PAYMENT THANK YOU', 500.00, 'Finance', ['transfer']),  # Positive = transfer in
             ('COFFEE SHOP', 5.00, 'Food', []),
         ])
 
         stats = analyze_transactions(txns)
 
-        # Transfer should be excluded
-        assert stats['excluded_count'] == 1
-        assert stats['excluded_transactions'][0]['merchant'] == 'CC'
+        # Positive transfer goes to transfers_in
+        assert stats['transfers_in'] == 500.00
+        assert stats['transfers_out'] == 0.0
+        assert stats['transfers_net'] == 500.00
         # Spending should only include grocery + coffee = $55
-        total_spending = sum(data['total'] for data in stats['by_category'].values())
-        assert total_spending == 55.00
+        assert stats['spending_total'] == 55.00
 
     def test_refund_tag_not_special(self):
-        """Refund tag is not special - refunds are regular transactions that net against spending."""
+        """Refund tag is not special - refunds are tracked as credits."""
         from tally.analyzer import analyze_transactions
 
         txns = self._create_transactions([
@@ -1042,11 +1042,11 @@ class TestSpecialTags:
 
         stats = analyze_transactions(txns)
 
-        # Refund should NOT be excluded (refund tag is not special)
-        assert stats['excluded_count'] == 0
-        # Spending should include all: 100 - 25 + 50 = 125
-        total_spending = sum(data['total'] for data in stats['by_category'].values())
-        assert total_spending == 125.00
+        # Refund tracked as credit (now stored as positive value)
+        assert stats['spending_total'] == 150.00  # 100 + 50
+        assert stats['credits_total'] == 25.00    # Stored as positive
+        # Cash flow: income - spending + credits = 0 - 150 + 25 = -125
+        assert stats['cash_flow'] == -125.00
 
     def test_multiple_special_tags(self):
         """Multiple transactions with different special tags."""
@@ -1056,17 +1056,22 @@ class TestSpecialTags:
             ('GROCERY STORE', 50.00, 'Food', []),
             ('SALARY DEPOSIT', 3000.00, 'Income', ['income']),
             ('VENMO TRANSFER', 100.00, 'Finance', ['transfer']),
-            ('AMAZON REFUND', -30.00, 'Shopping', []),  # Regular transaction
+            ('AMAZON REFUND', -30.00, 'Shopping', []),  # Regular transaction (credit)
             ('COFFEE SHOP', 5.00, 'Food', []),
         ])
 
         stats = analyze_transactions(txns)
 
-        # Income + transfer should be excluded
-        assert stats['excluded_count'] == 2
-        # Spending: grocery(50) + refund(-30) + coffee(5) = 25
-        total_spending = sum(data['total'] for data in stats['by_category'].values())
-        assert total_spending == 25.00
+        # Income tracked separately
+        assert stats['income_total'] == 3000.00
+        # Transfer tracked separately (positive = in)
+        assert stats['transfers_in'] == 100.00
+        # Spending: grocery(50) + coffee(5) = 55
+        assert stats['spending_total'] == 55.00
+        # Credits: refund (now stored as positive)
+        assert stats['credits_total'] == 30.00
+        # Cash flow: income - spending + credits = 3000 - 55 + 30 = 2975
+        assert stats['cash_flow'] == 2975.00
 
     def test_category_no_longer_excludes(self):
         """Categories like 'Transfers' no longer auto-exclude without tags."""
@@ -1080,11 +1085,12 @@ class TestSpecialTags:
 
         stats = analyze_transactions(txns)
 
-        # Nothing should be excluded (no special tags)
-        assert stats['excluded_count'] == 0
-        # All spending included: 50 + 100 + 5 = 155
-        total_spending = sum(data['total'] for data in stats['by_category'].values())
-        assert total_spending == 155.00
+        # All spending included (no special tags): 50 + 100 + 5 = 155
+        assert stats['spending_total'] == 155.00
+        # No income or transfers
+        assert stats['income_total'] == 0.0
+        assert stats['transfers_in'] == 0.0
+        assert stats['transfers_out'] == 0.0
 
 
 class TestCustomFieldCaptures:

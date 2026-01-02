@@ -1,7 +1,7 @@
 """
-Spending Analyzer - Core analysis logic.
+Transaction Analyzer - Core analysis logic.
 
-Analyzes AMEX and BOA transactions using merchant categorization rules.
+Analyzes transactions using merchant categorization rules.
 """
 
 import json
@@ -9,6 +9,13 @@ from collections import defaultdict
 from datetime import datetime
 
 from . import section_engine
+from .classification import (
+    categorize_amount,
+    normalize_amount,
+    is_excluded_from_spending,
+    calculate_cash_flow,
+    calculate_transfers_net,
+)
 
 # Import parsing functions from parsers module (and re-export for backwards compatibility)
 from .parsers import (
@@ -53,57 +60,48 @@ def analyze_transactions(transactions):
     })
     by_month = defaultdict(float)
 
-    # Track excluded transactions separately (for transparency in UI)
-    excluded_transactions = []
-
-    # Special tags that affect spending analysis
-    EXCLUDE_TAGS = {'income', 'transfer'}  # Excluded from spending totals
+    # Track money flow totals (separated by transfers vs cash flow)
+    income_total = 0.0
+    spending_total = 0.0
+    credits_total = 0.0  # Refunds from non-income merchants
+    transfers_in = 0.0
+    transfers_out = 0.0
+    investment_total = 0.0  # 401K, IRA, and other investment contributions
 
     for txn in transactions:
-        # Check for special tags: income, transfer -> exclude from spending
-        txn_tags = set(t.lower() for t in txn.get('tags', []))
-        excluded_reason = txn.get('excluded')
-        if not excluded_reason and (txn_tags & EXCLUDE_TAGS):
-            excluded_reason = 'tagged-' + next(iter(txn_tags & EXCLUDE_TAGS))
+        tags = txn.get('tags', [])
 
-        if excluded_reason:
-            excluded_txn = {
-                'date': txn['date'].strftime('%m/%d'),
-                'month': txn['date'].strftime('%Y-%m'),
-                'description': txn.get('raw_description', txn['description']),
-                'merchant': txn['merchant'],
-                'amount': txn['amount'],
-                'category': txn['category'],
-                'subcategory': txn['subcategory'],
-                'source': txn['source'],
-                'location': txn.get('location'),
-                'tags': txn.get('tags', []),
-                'excluded_reason': excluded_reason,
-            }
-            # Include extra_fields from field: directives
-            if txn.get('extra_fields'):
-                excluded_txn['extra_fields'] = txn['extra_fields']
-            excluded_transactions.append(excluded_txn)
-            continue  # Don't include in spending totals
+        # Use classification module for consistent amount handling
+        effective_amount = normalize_amount(txn['amount'], tags)
+
+        # Categorize amount into appropriate bucket (all values positive)
+        cat = categorize_amount(txn['amount'], tags)
+        income_total += cat['income']
+        investment_total += cat['investment']
+        spending_total += cat['spending']
+        credits_total += cat['credits']      # Now stored as positive
+        transfers_in += cat['transfer_in']
+        transfers_out += cat['transfer_out']  # Now stored as positive
+
         key = (txn['category'], txn['subcategory'])
         by_category[key]['count'] += 1
-        by_category[key]['total'] += txn['amount']
+        by_category[key]['total'] += effective_amount
 
         month_key = txn['date'].strftime('%Y-%m')
 
         # Track by merchant
         by_merchant[txn['merchant']]['count'] += 1
-        by_merchant[txn['merchant']]['total'] += txn['amount']
+        by_merchant[txn['merchant']]['total'] += effective_amount
         by_merchant[txn['merchant']]['category'] = txn['category']
         by_merchant[txn['merchant']]['subcategory'] = txn['subcategory']
         by_merchant[txn['merchant']]['months'].add(month_key)
-        by_merchant[txn['merchant']]['monthly_amounts'][month_key] += txn['amount']
-        by_merchant[txn['merchant']]['payments'].append(txn['amount'])
+        by_merchant[txn['merchant']]['monthly_amounts'][month_key] += effective_amount
+        by_merchant[txn['merchant']]['payments'].append(effective_amount)
         txn_data = {
             'date': txn['date'].strftime('%m/%d'),
             'month': month_key,
             'description': txn.get('raw_description', txn['description']),
-            'amount': txn['amount'],
+            'amount': effective_amount,
             'source': txn['source'],
             'location': txn.get('location'),
             'tags': txn.get('tags', [])
@@ -113,8 +111,8 @@ def analyze_transactions(transactions):
             txn_data['extra_fields'] = txn['extra_fields']
         by_merchant[txn['merchant']]['transactions'].append(txn_data)
         # Track max payment
-        if txn['amount'] > by_merchant[txn['merchant']]['max_payment']:
-            by_merchant[txn['merchant']]['max_payment'] = txn['amount']
+        if effective_amount > by_merchant[txn['merchant']]['max_payment']:
+            by_merchant[txn['merchant']]['max_payment'] = effective_amount
         # Store match info (pattern that matched) - first transaction sets this
         if 'match_info' not in by_merchant[txn['merchant']] and txn.get('match_info'):
             by_merchant[txn['merchant']]['match_info'] = txn['match_info']
@@ -124,7 +122,7 @@ def analyze_transactions(transactions):
         raw_desc = txn.get('raw_description', txn.get('description', ''))
         by_merchant[txn['merchant']]['raw_descriptions'][raw_desc] += 1
 
-        by_month[month_key] += txn['amount']
+        by_month[month_key] += effective_amount
 
     # Calculate months active and monthly average for each merchant
     all_months = set(by_month.keys())
@@ -169,27 +167,32 @@ def analyze_transactions(transactions):
             'cv': round(data.get('cv', 0), 2),
         }
 
-    # Calculate totals only from non-excluded transactions
-    included_transactions = [t for t in transactions if not t.get('excluded')]
-
     # Calculate monthly totals (views.rules handles custom grouping/sections)
-    total_spending = sum(d['total'] for d in by_merchant.values())
+    total_transactions = sum(d['total'] for d in by_merchant.values())
     monthly_avg = sum(d.get('monthly_value', 0) for d in by_merchant.values())
 
     return {
         'by_category': dict(by_category),
         'by_merchant': {k: dict(v) for k, v in by_merchant.items()},
         'by_month': dict(by_month),
-        'total': sum(t['amount'] for t in included_transactions),
-        'count': len(included_transactions),
+        'total': sum(t['amount'] for t in transactions),
+        'count': len(transactions),
         'num_months': num_months,
         # Totals
-        'total_spending': total_spending,
+        'total_transactions': total_transactions,
         'monthly_avg': monthly_avg,
-        # Excluded transactions (for UI transparency)
-        'excluded_transactions': excluded_transactions,
-        'excluded_count': len(excluded_transactions),
-        'excluded_total': sum(t['amount'] for t in excluded_transactions),
+        # Money flow (all values positive for clarity)
+        # Cash flow (excludes transfers and investments)
+        'income_total': income_total,
+        'spending_total': spending_total,
+        'credits_total': credits_total,  # Refunds (now stored as positive)
+        'cash_flow': calculate_cash_flow(income_total, spending_total, credits_total),
+        # Transfers (money moving between accounts, both positive)
+        'transfers_in': transfers_in,
+        'transfers_out': transfers_out,
+        'transfers_net': calculate_transfers_net(transfers_in, transfers_out),
+        # Investments (401K, IRA contributions - excluded from spending)
+        'investment_total': investment_total,
     }
 
 
@@ -215,6 +218,11 @@ def classify_by_sections(by_merchant, sections_config, num_months=12):
     # Convert by_merchant to the format expected by section_engine
     merchant_groups = []
     for merchant_name, data in by_merchant.items():
+        # Skip merchants excluded from spending (income, transfer, investment)
+        # They appear on their respective cards, not in spending sections
+        if is_excluded_from_spending(list(data.get('tags', []))):
+            continue
+
         # Build transactions list for the section filter
         # The 'transactions' key already has the individual transactions
         txns = data.get('transactions', [])
@@ -377,17 +385,16 @@ def export_json(stats, verbose=0, category_filter=None, merchant_filter=None):
     by_merchant = stats.get('by_merchant', {})
     by_month = stats.get('by_month', {})
     by_category = stats.get('by_category', {})
-    excluded_transactions = stats.get('excluded_transactions', [])
 
     # Calculate gross spending and credits
     gross_spending = sum(d['total'] for d in by_merchant.values() if d['total'] > 0)
     credits_total = abs(sum(d['total'] for d in by_merchant.values() if d['total'] < 0))
 
-    # Calculate income and transfers
-    income_total = abs(sum(t['amount'] for t in excluded_transactions
-                          if 'income' in [tag.lower() for tag in t.get('tags', [])]))
-    transfers_total = abs(sum(t['amount'] for t in excluded_transactions
-                              if 'transfer' in [tag.lower() for tag in t.get('tags', [])]))
+    # Calculate income and transfers from merchants by tag
+    income_total = sum(d['total'] for d in by_merchant.values()
+                       if 'income' in [t.lower() for t in d.get('tags', set())])
+    transfers_total = abs(sum(d['total'] for d in by_merchant.values()
+                              if 'transfer' in [t.lower() for t in d.get('tags', set())]))
 
     output = {
         'summary': {
@@ -450,40 +457,38 @@ def export_markdown(stats, verbose=0, category_filter=None, merchant_filter=None
     by_merchant = stats.get('by_merchant', {})
     by_month = stats.get('by_month', {})
     by_category = stats.get('by_category', {})
-    summary = stats.get('summary', {})
 
-    # Use pre-computed values from summary
-    income_total = summary.get('income_total', 0)
-    transfers_total = summary.get('transfers_total', 0)
-    net_cash_flow = summary.get('net_cash_flow')
+    # Use cash flow values from stats
+    income_total = stats.get('income_total', 0)
+    spending_total = stats.get('spending_total', 0)
+    credits_total = stats.get('credits_total', 0)
+    cash_flow = stats.get('cash_flow', 0)
+    transfers_in = stats.get('transfers_in', 0)
+    transfers_out = stats.get('transfers_out', 0)
+    transfers_net = stats.get('transfers_net', 0)
 
-    # Calculate gross spending and credits
-    gross_spending = sum(d['total'] for d in by_merchant.values() if d['total'] > 0)
-    credits_total = abs(sum(d['total'] for d in by_merchant.values() if d['total'] < 0))
+    lines = ['# Financial Report\n']
 
-    lines = ['# Spending Analysis\n']
+    # Cash Flow Summary
+    lines.append('## Cash Flow\n')
+    lines.append(f"| Item | Amount |")
+    lines.append(f"|------|--------|")
+    lines.append(f"| Income | +${income_total:,.2f} |")
+    lines.append(f"| Spending | -${spending_total:,.2f} |")
+    lines.append(f"| Credits/Refunds | +${abs(credits_total):,.2f} |")
+    sign = '+' if cash_flow >= 0 else ''
+    lines.append(f"| **Net Cash Flow** | **{sign}${cash_flow:,.2f}** |")
+    lines.append('')
 
-    # Summary
-    lines.append('## Summary\n')
-    lines.append(f"- **Monthly Budget:** ${stats['monthly_avg']:.2f}/mo")
-    lines.append(f"- **Total Spending (YTD):** ${stats['total']:.2f}")
-    if credits_total > 0:
-        lines.append(f"- **Credits/Refunds:** +${credits_total:.2f}")
-        lines.append(f"- **Gross Spending:** ${gross_spending:.2f}")
+    # Transfers Summary
+    lines.append('## Transfers\n')
+    lines.append(f"| Item | Amount |")
+    lines.append(f"|------|--------|")
+    lines.append(f"| In | +${transfers_in:,.2f} |")
+    lines.append(f"| Out | ${transfers_out:,.2f} |")
+    sign = '+' if transfers_net >= 0 else ''
+    lines.append(f"| **Net Transfers** | **{sign}${transfers_net:,.2f}** |")
     lines.append(f"- **Data Period:** {stats['num_months']} months\n")
-
-    # Cash Flow (uses pre-computed net_cash_flow which excludes transfers)
-    if income_total > 0 and net_cash_flow is not None:
-        lines.append('## Cash Flow\n')
-        lines.append(f"| Item | Amount |")
-        lines.append(f"|------|--------|")
-        lines.append(f"| Income | +${income_total:,.2f} |")
-        lines.append(f"| Spending | -${stats['total']:,.2f} |")
-        sign = '+' if net_cash_flow >= 0 else ''
-        lines.append(f"| **Net Cash Flow** | **{sign}${net_cash_flow:,.2f}** |")
-        if transfers_total > 0:
-            lines.append(f"| *(Transfers)* | *${transfers_total:,.2f}* |")
-        lines.append('')
 
     # Monthly Breakdown
     if by_month:
@@ -570,53 +575,44 @@ def print_summary(stats, year=2025, filter_category=None, currency_format="${amo
     by_category = stats['by_category']
     by_merchant = stats.get('by_merchant', {})
     by_month = stats.get('by_month', {})
-    summary = stats.get('summary', {})
 
-    # Use pre-computed values from summary (single source of truth)
-    actual_spending = stats.get('total', 0)
-    income_total = summary.get('income_total', 0)
-    transfers_total = summary.get('transfers_total', 0)
-    net_cash_flow = summary.get('net_cash_flow')
+    # Use cash flow values from stats
+    income_total = stats.get('income_total', 0)
+    spending_total = stats.get('spending_total', 0)
+    credits_total = stats.get('credits_total', 0)
+    cash_flow = stats.get('cash_flow', 0)
+    transfers_in = stats.get('transfers_in', 0)
+    transfers_out = stats.get('transfers_out', 0)
+    transfers_net = stats.get('transfers_net', 0)
 
-    # Calculate gross spending (positive merchants only) and credits (negative merchants)
+    # Calculate gross spending (positive merchants only) for display
     gross_spending = sum(d['total'] for d in by_merchant.values() if d['total'] > 0)
-    credits_total = abs(sum(d['total'] for d in by_merchant.values() if d['total'] < 0))
 
     # =========================================================================
-    # SPENDING SUMMARY
+    # FINANCIAL SUMMARY
     # =========================================================================
     print("=" * 80)
-    print(f"{year} SPENDING ANALYSIS")
+    print(f"{year} FINANCIAL REPORT")
     print("=" * 80)
 
-    print("\nSUMMARY")
+    print("\nCASH FLOW")
     print("-" * 50)
-    print(f"Monthly Average:             {fmt(stats['monthly_avg']):>14}/mo")
-    print(f"Total Spending (YTD):        {fmt(actual_spending):>14}")
-    if credits_total > 0:
-        print(f"Credits/Refunds:            +{fmt(credits_total):>14}")
-        print(f"Gross Spending:              {fmt(gross_spending):>14}")
-    print(f"Merchants:                   {len(by_merchant):>14}")
+    print(f"Income:                     +{fmt(income_total):>14}")
+    print(f"Spending:                   -{fmt(spending_total):>14}")
+    print(f"Credits/Refunds:            +{fmt(abs(credits_total)):>14}")
+    print("-" * 50)
+    sign = '+' if cash_flow >= 0 else ''
+    print(f"Net Cash Flow:              {sign}{fmt(cash_flow):>14}")
 
-    # =========================================================================
-    # CASH FLOW (if income exists)
-    # =========================================================================
-    if income_total > 0 and net_cash_flow is not None:
-        print("\n" + "=" * 80)
-        print("CASH FLOW")
-        print("=" * 80)
-        print(f"\nIncome:                     +{fmt(income_total):>14}")
-        print(f"Spending:                   -{fmt(actual_spending):>14}")
-        print("-" * 50)
-        sign = '+' if net_cash_flow >= 0 else ''
-        print(f"Net Cash Flow:              {sign}{fmt(net_cash_flow):>14}")
-        if transfers_total > 0:
-            print(f"\n(Transfers:                  {fmt(transfers_total):>14})")
-    elif stats.get('excluded_count', 0) > 0:
-        # Show excluded info if no income
-        print()
-        excluded_total = stats.get('excluded_total', 0)
-        print(f"Excluded (income/transfer):  {fmt(excluded_total):>14}  ({stats['excluded_count']} transactions)")
+    print("\nTRANSFERS")
+    print("-" * 50)
+    print(f"In:                         +{fmt(transfers_in):>14}")
+    print(f"Out:                         {fmt(transfers_out):>14}")
+    print("-" * 50)
+    sign = '+' if transfers_net >= 0 else ''
+    print(f"Net Transfers:              {sign}{fmt(transfers_net):>14}")
+
+    print(f"\nMerchants:                   {len(by_merchant):>14}")
 
     # =========================================================================
     # CREDITS/REFUNDS (if any negative totals)
@@ -640,14 +636,14 @@ def print_summary(stats, year=2025, filter_category=None, currency_format="${amo
         print("\n" + "=" * 80)
         print("MONTHLY BREAKDOWN")
         print("=" * 80)
-        print(f"\n{'Month':<12} {'Spending':>14} {'Transactions':>14}")
-        print("-" * 44)
+        print(f"\n{'Month':<12} {'Total':>14}")
+        print("-" * 28)
         for month in sorted(by_month.keys()):
-            data = by_month[month]
+            total = by_month[month]
             month_label = month  # Format: "2024-01"
-            print(f"{month_label:<12} {fmt(data['total']):>14} {data['count']:>14}")
-        avg_monthly = actual_spending / len(by_month) if by_month else 0
-        print("-" * 44)
+            print(f"{month_label:<12} {fmt(total):>14}")
+        avg_monthly = abs(spending_total + transfers_out) / len(by_month) if by_month else 0
+        print("-" * 28)
         print(f"{'AVERAGE':<12} {fmt(avg_monthly):>14}/mo")
 
     # =========================================================================
@@ -676,7 +672,7 @@ def print_summary(stats, year=2025, filter_category=None, currency_format="${amo
         category = data.get('category', 'Unknown')[:18]
         print(f"{merchant:<28} {category:<18} {months_active:>3} {fmt(monthly):>12} {fmt(total):>14}")
 
-    print(f"\n{'TOTAL':<28} {'':<18} {'':<3} {fmt(stats['monthly_avg']):>12}/mo {fmt(actual_spending):>14}")
+    print(f"\n{'TOTAL':<28} {'':<18} {'':<3} {fmt(stats['monthly_avg']):>12}/mo {fmt(abs(spending_total)):>14}")
 
     # =========================================================================
     # BY CATEGORY (with percentages)
@@ -771,7 +767,12 @@ def print_sections_summary(stats, year=2025, currency_format="${amount}", only_f
         if len(sorted_merchants) > 20:
             print(f"  ... and {len(sorted_merchants) - 20} more merchants")
 
+    # Use transaction-level spending total from stats (matches HTML Cash Flow)
+    spending_total = stats.get('spending_total', 0)
+    monthly_avg = spending_total / num_months if num_months > 0 else 0
+
     print()
+    print(f"TOTAL SPENDING: {fmt(spending_total)}/yr · {fmt(monthly_avg)}/mo")
     print("=" * 80)
 
 
