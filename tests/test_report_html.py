@@ -1758,3 +1758,215 @@ class TestCreditsDisplay:
         credits_value = credits_item.locator(".value")
         # Should show positive amount (the $40 in credits)
         expect(credits_value).to_contain_text("+")
+
+
+# =============================================================================
+# Category Percentage Bug Tests (Issue: Subcategory Filter)
+# =============================================================================
+
+@pytest.fixture(scope="module")
+def subcategory_filter_report_path(tmp_path_factory):
+    """Generate a report with multiple subcategories to test percentage calculation.
+
+    This fixture tests the bug where filtering by subcategory causes
+    incorrect category percentages (e.g., 379.8% instead of valid percentages).
+
+    The bug occurs because:
+    - typeTotals.spending uses UNFILTERED category total
+    - grossSpending uses FILTERED total
+    - Result: unfiltered / filtered = percentage > 100%
+
+    Fixture data:
+    - Food category: $500 total
+      - Grocery: $300 (Whole Foods $200, Trader Joes $100)
+      - Coffee: $100 (Starbucks)
+      - Delivery: $100 (DoorDash)
+    - Shopping category: $200 total
+      - Online: $200 (Amazon)
+    """
+    tmp_dir = tmp_path_factory.mktemp("subcategory_filter_test")
+    config_dir = tmp_dir / "config"
+    data_dir = tmp_dir / "data"
+    output_dir = tmp_dir / "output"
+
+    config_dir.mkdir()
+    data_dir.mkdir()
+    output_dir.mkdir()
+
+    csv_content = """Date,Description,Amount
+01/05/2025,WHOLE FOODS MKT,200.00
+01/08/2025,TRADER JOES,100.00
+01/10/2025,STARBUCKS COFFEE,100.00
+01/15/2025,DOORDASH DELIVERY,100.00
+01/20/2025,AMAZON PURCHASE,200.00
+"""
+    (data_dir / "transactions.csv").write_text(csv_content)
+
+    settings_content = """year: 2025
+
+data_sources:
+  - name: Test
+    file: data/transactions.csv
+    format: "{date},{description},{amount}"
+
+merchants_file: config/merchants.rules
+"""
+    (config_dir / "settings.yaml").write_text(settings_content)
+
+    rules_content = """[Whole Foods]
+match: contains("WHOLE FOODS")
+category: Food
+subcategory: Grocery
+
+[Trader Joes]
+match: contains("TRADER JOES")
+category: Food
+subcategory: Grocery
+
+[Starbucks]
+match: contains("STARBUCKS")
+category: Food
+subcategory: Coffee
+
+[DoorDash]
+match: contains("DOORDASH")
+category: Food
+subcategory: Delivery
+
+[Amazon]
+match: contains("AMAZON")
+category: Shopping
+subcategory: Online
+"""
+    (config_dir / "merchants.rules").write_text(rules_content)
+
+    # Generate report
+    report_path = output_dir / "spending.html"
+    result = subprocess.run(
+        ["uv", "run", "tally", "run", "--format", "html", "-o", str(report_path), str(config_dir)],
+        capture_output=True,
+        text=True,
+        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+
+    if result.returncode != 0:
+        pytest.fail(f"Failed to generate report: {result.stderr}")
+
+    return str(report_path)
+
+
+class TestSubcategoryFilterPercentage:
+    """Tests for category percentage calculation when filtering by subcategory.
+
+    Bug: When filtering to a subcategory (e.g., Food > Delivery), the category
+    header shows an incorrect percentage like 379.8% instead of a valid percentage.
+
+    Root cause: formatPct(typeTotals.spending, grossSpending) uses unfiltered
+    typeTotals with filtered grossSpending, producing percentages > 100%.
+    """
+
+    def test_unfiltered_category_percentage_valid(self, page: Page, subcategory_filter_report_path):
+        """Without filters, category percentages should be between 0-100%."""
+        page.goto(f"file://{subcategory_filter_report_path}")
+
+        # Get Food category percentage
+        food_section = page.get_by_test_id("section-cat-Food")
+        pct_text = food_section.locator(".section-pct").inner_text()
+
+        # Extract percentage value
+        match = re.search(r'\(([\d.]+)%\)', pct_text)
+        assert match, f"Could not find percentage in: {pct_text}"
+        pct_value = float(match.group(1))
+
+        # Food is $500 out of $700 total = ~71.4%
+        assert 0 <= pct_value <= 100, f"Unfiltered percentage {pct_value}% should be 0-100%"
+        assert 70 <= pct_value <= 73, f"Food percentage should be ~71.4%, got {pct_value}%"
+
+    def test_subcategory_filter_percentage_valid(self, page: Page, subcategory_filter_report_path):
+        """When filtering by subcategory, category percentage should still be valid (0-100%).
+
+        This is the main bug test. With the bug present, filtering to Food > Delivery
+        would show ~500% (unfiltered $500 / filtered $100).
+        """
+        # Navigate with subcategory filter applied via URL hash
+        page.goto(f"file://{subcategory_filter_report_path}#+sc:Delivery")
+
+        # Wait for filter to be applied
+        page.wait_for_timeout(300)
+        expect(page.get_by_test_id("filter-chip")).to_be_visible()
+
+        # Get Food category percentage
+        food_section = page.get_by_test_id("section-cat-Food")
+        pct_text = food_section.locator(".section-pct").inner_text()
+
+        # Extract percentage value
+        match = re.search(r'\(([\d.]+)%\)', pct_text)
+        assert match, f"Could not find percentage in: {pct_text}"
+        pct_value = float(match.group(1))
+
+        # With bug: ~500% (unfiltered Food total $500 / filtered Delivery $100)
+        # Fixed: Should be 100% (filtered Food $100 / filtered total $100)
+        assert 0 <= pct_value <= 100, (
+            f"Filtered category percentage {pct_value}% should be 0-100%. "
+            f"If >100%, the bug is present: typeTotals.spending (unfiltered) "
+            f"is being divided by grossSpending (filtered)."
+        )
+
+    def test_subcategory_filter_via_autocomplete(self, page: Page, subcategory_filter_report_path):
+        """Filter via autocomplete and verify percentage stays valid."""
+        page.goto(f"file://{subcategory_filter_report_path}")
+
+        # Use autocomplete to filter to Coffee subcategory (more unique than Delivery)
+        search = page.locator("input[type='text']")
+        search.click()
+        search.fill("Coffee")
+
+        page.wait_for_timeout(100)
+
+        # Click the Coffee subcategory item (with subcategory badge)
+        autocomplete = page.locator(".autocomplete-list")
+        coffee_item = autocomplete.locator(".autocomplete-item:has(.type.subcategory)", has_text="Coffee")
+        coffee_item.click()
+
+        page.wait_for_timeout(300)
+
+        # Verify filter is applied
+        expect(page.get_by_test_id("filter-chip")).to_be_visible()
+
+        # Get Food category percentage
+        food_section = page.get_by_test_id("section-cat-Food")
+        pct_text = food_section.locator(".section-pct").inner_text()
+
+        # Extract and verify percentage
+        match = re.search(r'\(([\d.]+)%\)', pct_text)
+        assert match, f"Could not find percentage in: {pct_text}"
+        pct_value = float(match.group(1))
+
+        assert 0 <= pct_value <= 100, (
+            f"Category percentage {pct_value}% exceeds 100% when filtered by subcategory. "
+            f"Bug: typeTotals.spending uses unfiltered total, grossSpending uses filtered total."
+        )
+
+    def test_multiple_subcategory_filters_percentage_valid(self, page: Page, subcategory_filter_report_path):
+        """Multiple subcategory filters should still produce valid percentages."""
+        # Filter to both Grocery and Coffee subcategories via URL hash
+        page.goto(f"file://{subcategory_filter_report_path}#+sc:Grocery+sc:Coffee")
+
+        page.wait_for_timeout(300)
+
+        # Verify filters are applied (should have 2 filter chips)
+        filter_chips = page.get_by_test_id("filter-chip").all()
+        assert len(filter_chips) >= 1, "Expected at least one filter chip"
+
+        # Get all category percentages
+        pct_elements = page.locator("[data-testid^='section-cat-'] .section-pct").all()
+        for el in pct_elements:
+            text = el.inner_text()
+            for match in re.finditer(r'\(([\d.]+)%([^)]*)\)', text):
+                pct = float(match.group(1))
+                label = match.group(2).strip()
+                if not label:  # Only check spending percentages
+                    assert 0 <= pct <= 100, (
+                        f"Category percentage {pct}% exceeds valid range. "
+                        f"Bug may be present in percentage calculation."
+                    )
