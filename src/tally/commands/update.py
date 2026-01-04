@@ -86,9 +86,9 @@ def cmd_update(args):
         print(f"\n✗ Cannot self-update when running from source. Use: uv tool upgrade tally")
         sys.exit(1)
 
-    # Perform binary update
+    # Perform binary update (force=True when switching from prerelease to stable)
     print()
-    success, message = perform_update(release_info)
+    success, message = perform_update(release_info, force=is_prerelease_to_stable)
 
     if success:
         print(f"\n✓ {message}")
