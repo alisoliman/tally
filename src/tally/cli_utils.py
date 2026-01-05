@@ -60,13 +60,14 @@ def resolve_config_dir(args, required=True):
         Absolute path to config directory, or None if not found and not required
     """
     if hasattr(args, 'config') and args.config:
-        return os.path.abspath(args.config)
+        config_dir = os.path.abspath(args.config)
+    else:
+        config_dir = find_config_dir()
 
-    config_dir = find_config_dir()
-    if config_dir is None and required:
-        print("Error: No config directory found.", file=sys.stderr)
-        print("\nTo get started, run:", file=sys.stderr)
-        print(f"  {C.GREEN}tally init{C.RESET}", file=sys.stderr)
+    if required and (config_dir is None or not os.path.isdir(config_dir)):
+        print("Error: Config directory not found.", file=sys.stderr)
+        print("Looked for: ./config and ./tally/config", file=sys.stderr)
+        print(f"\nRun '{C.GREEN}tally init{C.RESET}' to create a new budget directory.", file=sys.stderr)
         sys.exit(1)
 
     return config_dir
