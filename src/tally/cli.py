@@ -29,7 +29,6 @@ from ._version import (
 )
 from .config_loader import load_config
 
-BANNER = ''
 from .merchant_utils import get_all_rules, diagnose_rules, explain_description, load_merchant_rules, get_tag_only_rules, apply_tag_rules, get_transforms
 from .analyzer import (
     parse_amex,
@@ -48,7 +47,6 @@ _check_merchant_migration = check_merchant_migration
 from .templates import (
     STARTER_SETTINGS,
     STARTER_MERCHANTS,
-    STARTER_MERCHANT_CATEGORIES,
     STARTER_VIEWS,
 )
 
@@ -544,9 +542,8 @@ def main():
 
     args = parser.parse_args()
 
-    # If no command specified, show help with banner
+    # If no command specified, show help
     if args.command is None:
-        print(BANNER)
         parser.print_help()
 
         # Check for updates

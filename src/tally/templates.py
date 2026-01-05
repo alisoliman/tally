@@ -157,31 +157,6 @@ STARTER_MERCHANTS = '''# Tally Merchant Rules
 
 '''
 
-# Legacy format (deprecated)
-STARTER_MERCHANT_CATEGORIES = '''# Merchant Categorization Rules
-#
-# Define your merchant categorization rules here.
-# Format: Pattern,Merchant,Category,Subcategory
-#
-# - Pattern: Python regex (case-insensitive) matched against transaction descriptions
-# - Use | for alternatives: DELTA|SOUTHWEST matches either
-# - Use (?!...) for negative lookahead: UBER\\s(?!EATS) excludes Uber Eats
-# - Test patterns at regex101.com (Python flavor)
-#
-# First match wins.
-# Run: tally inspect <file> to see your transaction descriptions.
-#
-# Examples:
-#   MY LOCAL BAKERY,My Favorite Bakery,Food,Restaurant
-#   JOHNS PLUMBING,John's Plumbing,Bills,Home Repair
-#   ZELLE.*JANE,Jane (Babysitter),Personal,Childcare
-
-Pattern,Merchant,Category,Subcategory
-
-# Add your custom rules below:
-
-'''
-
 STARTER_VIEWS = '''# Tally Views Configuration (.rules format)
 #
 # Views define groups of merchants for your spending report.
