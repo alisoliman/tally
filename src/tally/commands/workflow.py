@@ -5,7 +5,7 @@ Tally 'workflow' command - Show context-aware workflow instructions for AI agent
 import os
 
 from ..colors import C
-from ..cli_utils import find_config_dir
+from ..cli_utils import resolve_config_dir
 from ..config_loader import load_config
 
 
@@ -13,8 +13,8 @@ def cmd_workflow(args):
     """Show context-aware workflow instructions for AI agents."""
     import subprocess
 
-    # Detect current state
-    config_dir = find_config_dir()
+    # Detect current state (don't require config - workflow shows getting started if missing)
+    config_dir = resolve_config_dir(args, required=False)
     has_config = config_dir is not None
     has_data_sources = False
     unknown_count = 0

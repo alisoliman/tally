@@ -10,7 +10,7 @@ from .._version import (
     perform_update,
 )
 
-from ..cli_utils import find_config_dir
+from ..cli_utils import resolve_config_dir
 from ..migrations import run_migrations
 
 
@@ -66,7 +66,7 @@ def cmd_update(args):
 
     # Check for migrations (layout updates, etc.)
     # This runs even if version check failed
-    config_dir = find_config_dir()
+    config_dir = resolve_config_dir(args, required=False)
     did_migrate = False
     if config_dir:
         old_config = config_dir

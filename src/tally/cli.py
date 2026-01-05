@@ -346,10 +346,15 @@ def main():
     )
 
     # workflow subcommand
-    subparsers.add_parser(
+    workflow_parser = subparsers.add_parser(
         'workflow',
         help='Show context-aware workflow instructions for AI agents',
         description='Detects current state and shows relevant next steps.'
+    )
+    workflow_parser.add_argument(
+        'config',
+        nargs='?',
+        help='Path to config directory (default: ./config)'
     )
 
     # reference subcommand
@@ -377,6 +382,11 @@ def main():
         'update',
         help='Update tally to the latest version',
         description='Download and install the latest tally release.'
+    )
+    update_parser.add_argument(
+        'config',
+        nargs='?',
+        help='Path to config directory (default: ./config)'
     )
     update_parser.add_argument(
         '--check',
