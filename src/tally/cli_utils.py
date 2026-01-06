@@ -53,14 +53,27 @@ def resolve_config_dir(args, required=True):
     """Resolve config directory from args or auto-detect.
 
     Args:
-        args: Parsed argparse namespace with optional 'config' attribute
+        args: Parsed argparse namespace with optional 'config' or 'config_dir' attribute
         required: If True, exit with error when no config found
+
+    Resolution order:
+    1. --config flag (args.config_dir)
+    2. Positional config argument (args.config) - deprecated
+    3. Auto-detect via find_config_dir()
 
     Returns:
         Absolute path to config directory, or None if not found and not required
     """
-    if hasattr(args, 'config') and args.config:
+    # Check --config flag first
+    if hasattr(args, 'config_dir') and args.config_dir:
+        config_dir = os.path.abspath(args.config_dir)
+    # Then check positional argument (deprecated)
+    elif hasattr(args, 'config') and args.config:
         config_dir = os.path.abspath(args.config)
+        # Warn about deprecation
+        print(f"{C.YELLOW}Note:{C.RESET} Positional config argument is deprecated. Use --config instead:", file=sys.stderr)
+        print(f"  tally {args.command} --config {args.config}", file=sys.stderr)
+        print(file=sys.stderr)
     else:
         config_dir = find_config_dir()
 

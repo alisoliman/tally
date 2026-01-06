@@ -51,6 +51,11 @@ def main():
         help='Path to config directory (default: ./config)'
     )
     up_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (alternative to positional argument)'
+    )
+    up_parser.add_argument(
         '--settings', '-s',
         default='settings.yaml',
         help='Settings file name (default: settings.yaml)'
@@ -123,6 +128,11 @@ def main():
         'config',
         nargs='?',
         help='Path to config directory (default: ./config)'
+    )
+    run_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (alternative to positional argument)'
     )
     run_parser.add_argument(
         '--settings', '-s',
@@ -210,6 +220,11 @@ def main():
         help='Path to config directory (default: ./config)'
     )
     discover_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (alternative to positional argument)'
+    )
+    discover_parser.add_argument(
         '--settings', '-s',
         default='settings.yaml',
         help='Settings file name (default: settings.yaml)'
@@ -239,6 +254,11 @@ def main():
         help='Path to config directory (default: ./config)'
     )
     diag_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (alternative to positional argument)'
+    )
+    diag_parser.add_argument(
         '--settings', '-s',
         default='settings.yaml',
         help='Settings file name (default: settings.yaml)'
@@ -264,9 +284,9 @@ def main():
         help='Merchant name or raw transaction description to explain (shows summary if omitted)'
     )
     explain_parser.add_argument(
-        'config',
-        nargs='?',
-        help='Path to config directory (default: ./config)'
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (recommended over positional argument)'
     )
     explain_parser.add_argument(
         '--settings', '-s',
@@ -322,6 +342,11 @@ def main():
         nargs='?',
         help='Path to config directory (default: ./config)'
     )
+    workflow_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (alternative to positional argument)'
+    )
 
     # reference subcommand
     reference_parser = subparsers.add_parser(
@@ -353,6 +378,11 @@ def main():
         'config',
         nargs='?',
         help='Path to config directory (default: ./config)'
+    )
+    update_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (alternative to positional argument)'
     )
     update_parser.add_argument(
         '--check',
