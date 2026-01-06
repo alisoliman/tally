@@ -9,6 +9,7 @@ from tally.commands.inspect import (
     _detect_column_type,
     _analyze_columns,
     _analyze_amount_column_detailed,
+    _detect_currency_symbol,
 )
 
 
@@ -671,5 +672,161 @@ class TestRothIraScenario:
             # (7000 is integer, 7002.04 has decimals)
             assert any('Mixed' in obs for obs in result['format_observations'])
 
+        finally:
+            os.unlink(tmpfile)
+
+
+class TestDetectCurrencySymbol:
+    """Tests for currency symbol detection."""
+
+    def test_detect_dollar_symbol(self):
+        """Test detecting $ symbol in amount column."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,$12.50
+2024-01-02,Lunch,$25.00
+2024-01-03,Dinner,$45.99
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '$'
+        finally:
+            os.unlink(tmpfile)
+
+    def test_detect_euro_symbol(self):
+        """Test detecting € symbol in amount column."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,€12.50
+2024-01-02,Lunch,€25.00
+2024-01-03,Dinner,€45.99
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '€'
+        finally:
+            os.unlink(tmpfile)
+
+    def test_detect_pound_symbol(self):
+        """Test detecting £ symbol in amount column."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,£12.50
+2024-01-02,Lunch,£25.00
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '£'
+        finally:
+            os.unlink(tmpfile)
+
+    def test_detect_yen_symbol(self):
+        """Test detecting ¥ symbol in amount column."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,¥1250
+2024-01-02,Lunch,¥2500
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '¥'
+        finally:
+            os.unlink(tmpfile)
+
+    def test_no_symbol_returns_none(self):
+        """Test that amounts without symbols return None."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,12.50
+2024-01-02,Lunch,25.00
+2024-01-03,Dinner,45.99
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol is None
+        finally:
+            os.unlink(tmpfile)
+
+    def test_negative_amounts_with_symbol(self):
+        """Test detecting symbol with negative amounts."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Refund,-$12.50
+2024-01-02,Return,-$25.00
+2024-01-03,Credit,($45.99)
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '$'
+        finally:
+            os.unlink(tmpfile)
+
+    def test_symbol_after_amount(self):
+        """Test detecting symbol when it comes after the amount (European style)."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,12.50€
+2024-01-02,Lunch,25.00€
+2024-01-03,Dinner,45.99€
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '€'
+        finally:
+            os.unlink(tmpfile)
+
+    def test_most_common_symbol_wins(self):
+        """Test that the most common symbol is returned when multiple are present."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,$12.50
+2024-01-02,Lunch,$25.00
+2024-01-03,Dinner,$45.99
+2024-01-04,Euro,€10.00
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == '$'  # 3 occurrences vs 1 for €
+        finally:
+            os.unlink(tmpfile)
+
+    def test_currency_code_detection(self):
+        """Test detecting currency codes like USD, EUR."""
+        csv_content = """Date,Description,Amount
+2024-01-01,Coffee,USD 12.50
+2024-01-02,Lunch,USD 25.00
+2024-01-03,Dinner,USD 45.99
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_content)
+            tmpfile = f.name
+
+        try:
+            symbol = _detect_currency_symbol(tmpfile, amount_col=2, has_header=True)
+            assert symbol == 'USD'
         finally:
             os.unlink(tmpfile)
