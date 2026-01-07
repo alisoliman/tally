@@ -244,7 +244,8 @@
 <span class="keyword">tags:</span> tag1, tag2         <span class="comment"># Optional: labels for filtering</span></code></pre>
 
         <h3 id="transforms"><a href="#transforms" class="anchor-link">#</a>Transforms</h3>
-        <p>Use <code>@transforms</code> at the top of <code>merchants.rules</code> to mutate fields before rule matching and reporting. Each line inside the block sets <code>field.&lt;name&gt;</code> to an expression. Built-ins <code>field.amount</code>, <code>field.description</code>, and <code>field.date</code> update the real transaction fields; other names go to <code>field</code> captures.</p>
+        <p>Transforms are defined by top-level assignments whose left side starts with <code>field.</code>. The parser does <em>not</em> require a block marker; an <code>@transforms</code> line is just a human-readable separator you can include in the file if you like.</p>
+        <p>Built-ins <code>field.amount</code>, <code>field.description</code>, and <code>field.date</code> mutate the actual transaction fields; any other <code>field.&lt;name&gt;</code> writes to the custom <code>field</code> map.</p>
         <pre><code><span class="highlight">@transforms</span>
 <span class="comment"># Add fee column to amount (handles $ and commas)</span>
 field.amount = field.amount + regex_replace(regex_replace(field.fee, <span class="string">"\\$"</span>, <span class="string">""</span>), <span class="string">","</span>, <span class="string">""</span>)

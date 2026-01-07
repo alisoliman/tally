@@ -307,7 +307,8 @@ subcategory: Grocery</code></pre>
         <p>See the <a href="reference.html">Reference</a> for full syntax.</p>
 
         <h3 id="transforms"><a href="#transforms" class="anchor-link">#</a>Using Transforms</h3>
-        <p>Add an optional <code>@transforms</code> block at the top of <code>merchants.rules</code> to pre-process rows before matching. Example: add a fee column to the transaction amount.</p>
+        <p>Transforms are top-level assignments in <code>merchants.rules</code> whose left side starts with <code>field.</code>. You can optionally include an <code>@transforms</code> line as a human-readable separator, but it isn't required by the parser.</p>
+        <p>Example: add a fee column to the transaction amount.</p>
         <pre><code><span class="highlight">@transforms</span>
 <span class="comment"># Strip $/commas from fee, then add to amount</span>
 field.amount = field.amount + regex_replace(regex_replace(field.fee, "\\$", ""), ",", "")
