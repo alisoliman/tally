@@ -13,6 +13,7 @@ from .discover import cmd_discover
 from .inspect import cmd_inspect
 from .init import cmd_init
 from .explain import cmd_explain
+from .networth import cmd_networth
 
 __all__ = [
     'cmd_run',
@@ -24,4 +25,5 @@ __all__ = [
     'cmd_inspect',
     'cmd_init',
     'cmd_explain',
+    'cmd_networth',
 ]

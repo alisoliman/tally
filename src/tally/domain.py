@@ -180,18 +180,25 @@ class Plan:
 # UTILITY FUNCTIONS
 # =============================================================================
 
-def get_latest_snapshot(snapshots: list[Snapshot], account_id: str) -> Optional[Snapshot]:
+def get_latest_snapshot(snapshots: list[Snapshot], account_id: str,
+                       as_of_date: Optional[date] = None) -> Optional[Snapshot]:
     """
     Get the latest snapshot for an account.
 
     Args:
         snapshots: List of all snapshots
         account_id: Account ID to find snapshot for
+        as_of_date: Optional date to filter snapshots (returns latest snapshot <= this date)
 
     Returns:
         Latest snapshot for the account, or None if no snapshots exist
     """
     account_snapshots = [s for s in snapshots if s.account_id == account_id]
+
+    # Filter by as_of_date if provided
+    if as_of_date is not None:
+        account_snapshots = [s for s in account_snapshots if s.date <= as_of_date]
+
     if not account_snapshots:
         return None
     return max(account_snapshots, key=lambda s: s.date)

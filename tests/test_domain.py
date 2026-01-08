@@ -298,6 +298,28 @@ class TestGetLatestSnapshot:
         assert checking_latest.value == 1200.00
         assert savings_latest.value == 5000.00
 
+    def test_get_latest_snapshot_with_as_of_date(self):
+        """Test getting latest snapshot as of a specific date."""
+        snapshots = [
+            Snapshot('checking', date(2025, 1, 1), 1000.00),
+            Snapshot('checking', date(2025, 1, 8), 1200.00),
+            Snapshot('checking', date(2025, 1, 15), 1300.00),
+        ]
+        # Get latest snapshot as of Jan 10
+        latest = get_latest_snapshot(snapshots, 'checking', as_of_date=date(2025, 1, 10))
+        assert latest.date == date(2025, 1, 8)
+        assert latest.value == 1200.00
+
+    def test_get_latest_snapshot_as_of_date_no_match(self):
+        """Test getting latest snapshot when as_of_date is before all snapshots."""
+        snapshots = [
+            Snapshot('checking', date(2025, 1, 8), 1200.00),
+            Snapshot('checking', date(2025, 1, 15), 1300.00),
+        ]
+        # Get latest snapshot as of Jan 1 (before any snapshots)
+        latest = get_latest_snapshot(snapshots, 'checking', as_of_date=date(2025, 1, 1))
+        assert latest is None
+
 
 class TestValidatePlanAccounts:
     """Tests for validate_plan_accounts utility function."""

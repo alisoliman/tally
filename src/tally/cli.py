@@ -357,6 +357,39 @@ def main():
         help='Specific topic to show (default: show all)'
     )
 
+    # networth subcommand
+    networth_parser = subparsers.add_parser(
+        'networth',
+        help='Display net worth from account snapshots',
+        description='Calculate and display total net worth based on latest account snapshots. '
+                    'Shows balances by currency, account type (cash vs investment), and individual accounts.'
+    )
+    networth_parser.add_argument(
+        'config',
+        nargs='?',
+        help='(deprecated, use --config) Path to config directory'
+    )
+    networth_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (default: ./config)'
+    )
+    networth_parser.add_argument(
+        '--settings', '-s',
+        default='settings.yaml',
+        help='Settings file name (default: settings.yaml)'
+    )
+    networth_parser.add_argument(
+        '--as-of',
+        help='Calculate net worth as of a specific date (YYYY-MM-DD format)'
+    )
+    networth_parser.add_argument(
+        '--format', '-f',
+        choices=['summary', 'json'],
+        default='summary',
+        help='Output format: summary (default, human-readable), json (machine-readable)'
+    )
+
     # version subcommand
     subparsers.add_parser(
         'version',
@@ -446,6 +479,9 @@ def main():
     elif args.command == 'reference':
         from .commands import cmd_reference
         cmd_reference(args)
+    elif args.command == 'networth':
+        from .commands import cmd_networth
+        cmd_networth(args)
     elif args.command == 'version':
         sha_display = GIT_SHA[:8] if GIT_SHA != 'unknown' else 'unknown'
         print(f"tally {VERSION} ({sha_display})")
