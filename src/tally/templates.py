@@ -239,3 +239,132 @@ STARTER_VIEWS = '''# Tally Views Configuration (.rules format)
 # filter: "business" in tags
 
 '''
+
+# =============================================================================
+# TALLY V1 TEMPLATES
+# =============================================================================
+
+STARTER_ACCOUNTS = '''# Tally Accounts
+#
+# Define all accounts with balances you want to track.
+# v1 features (net worth, budget projections) are enabled when this file exists.
+#
+# Account kinds:
+#   cash       - Spendable money (checking, savings, cash)
+#   investment - Owned value, not directly spendable (401k, brokerage, IRA)
+#
+# Run: tally networth to see your current net worth across all accounts.
+
+accounts:
+  # Cash accounts (spendable money)
+  - id: checking
+    name: Main Checking
+    kind: cash
+    currency: USD
+
+  # - id: savings
+  #   name: High-Yield Savings
+  #   kind: cash
+  #   currency: USD
+
+  # Investment accounts (owned value)
+  # - id: 401k
+  #   name: Vanguard 401(k)
+  #   kind: investment
+  #   currency: USD
+
+  # - id: brokerage
+  #   name: Fidelity Brokerage
+  #   kind: investment
+  #   currency: USD
+
+  # Multi-currency example
+  # - id: eu-checking
+  #   name: N26 Checking (Europe)
+  #   kind: cash
+  #   currency: EUR
+'''
+
+STARTER_SNAPSHOTS = '''# Tally Snapshots
+#
+# Record point-in-time balances (the authoritative truth).
+# The latest snapshot per account = current balance.
+#
+# Snapshots can jump freely without needing to reconcile with transactions.
+# This makes Tally resilient to incomplete transaction data.
+#
+# Tip: Take a screenshot of your bank balance and reference it here!
+#
+# Run: tally networth to see balances from your latest snapshots.
+
+snapshots:
+  # Example: checking account balance on Jan 1
+  # - account: checking
+  #   date: 2025-01-01
+  #   value: 5432.10
+  #   note: "Starting balance"
+
+  # Example: with screenshot reference
+  # - account: checking
+  #   date: 2025-01-08
+  #   value: 4821.45
+  #   note: "After rent payment"
+  #   attachment: screenshots/checking-jan-8.png
+
+  # Example: savings account
+  # - account: savings
+  #   date: 2025-01-08
+  #   value: 10500.00
+
+  # Example: 401k from quarterly statement
+  # - account: 401k
+  #   date: 2025-01-01
+  #   value: 125000.00
+  #   note: "Q4 2024 statement balance"
+
+  # Add your snapshots below:
+'''
+
+STARTER_PLANS = '''# Tally Plans
+#
+# Define recurring financial intentions (investments, savings goals).
+# Plans say what SHOULD happen, not what did happen.
+#
+# Plan types (v1):
+#   invest - Transfer from cash to investment account (e.g., 401k contribution)
+#
+# Cadence (v1):
+#   monthly - Repeats monthly
+#
+# Status:
+#   active - Plan is currently running
+#   paused - Plan is temporarily paused
+#
+# Run: tally budget to see how plans affect your monthly cash flow.
+
+plans:
+  # Example: monthly 401k contribution
+  # - id: 401k-monthly
+  #   type: invest
+  #   from: checking          # Must be a cash account
+  #   to: 401k                # Must be an investment account
+  #   amount: 500.00
+  #   currency: USD           # Must match both accounts
+  #   cadence: monthly
+  #   start_date: 2025-01-01
+  #   status: active
+
+  # Example: paused IRA contribution
+  # - id: ira-contribution
+  #   type: invest
+  #   from: checking
+  #   to: ira
+  #   amount: 250.00
+  #   currency: USD
+  #   cadence: monthly
+  #   start_date: 2025-01-01
+  #   status: paused
+
+  # Add your plans below:
+'''
+
