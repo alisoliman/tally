@@ -253,15 +253,15 @@ def load_personal_finance_config(config_dir: str, settings: dict) -> dict:
 
     try:
         # Load accounts
-        accounts_file = settings.get('accounts_file', 'config/accounts.yaml')
+        accounts_file = settings.get('accounts_file', 'accounts.yaml')
         result['accounts'] = load_accounts(config_dir, accounts_file)
 
         # Load snapshots
-        snapshots_file = settings.get('snapshots_file', 'config/snapshots.yaml')
+        snapshots_file = settings.get('snapshots_file', 'snapshots.yaml')
         result['snapshots'] = load_snapshots(config_dir, snapshots_file)
 
         # Load plans
-        plans_file = settings.get('plans_file', 'config/plans.yaml')
+        plans_file = settings.get('plans_file', 'plans.yaml')
         result['plans'] = load_plans(config_dir, plans_file)
 
         # Validate plans against accounts

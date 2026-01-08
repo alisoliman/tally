@@ -45,6 +45,13 @@ data_sources:
   #   columns:
   #     description: "{vendor} ({txn_type})"  # Combines columns into description
 
+# Personal finance tracking (optional)
+# These files define accounts, balances, and investment plans
+# Paths are relative to the config directory
+# accounts_file: accounts.yaml      # Account definitions (default: accounts.yaml)
+# snapshots_file: snapshots.yaml    # Balance snapshots (default: snapshots.yaml)
+# plans_file: plans.yaml            # Investment/savings plans (default: plans.yaml)
+
 # Output settings
 output_dir: output
 html_filename: spending_summary.html

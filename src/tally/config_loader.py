@@ -9,6 +9,7 @@ import os
 from .format_parser import parse_format_string, is_special_parser_type
 from .section_engine import load_sections, SectionParseError
 from .path_utils import resolve_data_source_paths
+from .accounts_loader import load_personal_finance_config
 
 # Try to import yaml, fall back to simple parsing if not available
 try:
@@ -346,6 +347,26 @@ def load_config(config_dir, settings_file='settings.yaml'):
         # No views_file configured - views feature is optional
         config['sections'] = None
         config['_views_file'] = None
+
+    # Load personal finance configuration (accounts, snapshots, plans)
+    pf_config = load_personal_finance_config(config_dir, config)
+    config['accounts'] = pf_config['accounts']
+    config['snapshots'] = pf_config['snapshots']
+    config['plans'] = pf_config['plans']
+
+    # Merge personal finance warnings into main warnings
+    for error in pf_config['errors']:
+        warnings.append({
+            'type': 'error',
+            'source': 'personal finance',
+            'message': error,
+        })
+    for warning in pf_config['warnings']:
+        warnings.append({
+            'type': 'warning',
+            'source': 'personal finance',
+            'message': warning,
+        })
 
     return config
 
