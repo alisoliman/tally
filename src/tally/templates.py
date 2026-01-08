@@ -241,13 +241,13 @@ STARTER_VIEWS = '''# Tally Views Configuration (.rules format)
 '''
 
 # =============================================================================
-# TALLY V1 TEMPLATES
+# PERSONAL FINANCE TEMPLATES
 # =============================================================================
 
 STARTER_ACCOUNTS = '''# Tally Accounts
 #
 # Define all accounts with balances you want to track.
-# v1 features (net worth, budget projections) are enabled when this file exists.
+
 #
 # Account kinds:
 #   cash       - Spendable money (checking, savings, cash)
@@ -330,10 +330,10 @@ STARTER_PLANS = '''# Tally Plans
 # Define recurring financial intentions (investments, savings goals).
 # Plans say what SHOULD happen, not what did happen.
 #
-# Plan types (v1):
+# Plan types:
 #   invest - Transfer from cash to investment account (e.g., 401k contribution)
 #
-# Cadence (v1):
+# Cadence:
 #   monthly - Repeats monthly
 #
 # Status:

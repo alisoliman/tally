@@ -1,7 +1,7 @@
 """
-Configuration loader for Tally v1 features.
+Configuration loader for Tally accounts, snapshots, and plans.
 
-Loads accounts, snapshots, and plans from YAML files.
+Loads personal finance data from YAML files.
 """
 
 import os
@@ -31,14 +31,13 @@ def load_accounts(config_dir: str, accounts_file: Optional[str] = None) -> list[
         accounts_file: Optional override path (relative to config_dir or absolute)
 
     Returns:
-        List of Account objects
+        List of Account objects (empty if file doesn't exist)
 
     Raises:
-        FileNotFoundError: If accounts file doesn't exist
         ValueError: If YAML is malformed or validation fails
     """
     if not HAS_YAML:
-        raise ImportError("PyYAML is required for v1 features. Install with: pip install pyyaml")
+        raise ImportError("PyYAML is required for account tracking. Install with: pip install pyyaml")
 
     # Resolve path
     if accounts_file:
@@ -50,7 +49,6 @@ def load_accounts(config_dir: str, accounts_file: Optional[str] = None) -> list[
         path = os.path.join(config_dir, 'accounts.yaml')
 
     if not os.path.exists(path):
-        # Return empty list if file doesn't exist (v1 features disabled)
         return []
 
     # Load YAML
@@ -96,14 +94,13 @@ def load_snapshots(config_dir: str, snapshots_file: Optional[str] = None) -> lis
         snapshots_file: Optional override path (relative to config_dir or absolute)
 
     Returns:
-        List of Snapshot objects
+        List of Snapshot objects (empty if file doesn't exist)
 
     Raises:
-        FileNotFoundError: If snapshots file doesn't exist
         ValueError: If YAML is malformed or validation fails
     """
     if not HAS_YAML:
-        raise ImportError("PyYAML is required for v1 features. Install with: pip install pyyaml")
+        raise ImportError("PyYAML is required for snapshot tracking. Install with: pip install pyyaml")
 
     # Resolve path
     if snapshots_file:
@@ -115,7 +112,6 @@ def load_snapshots(config_dir: str, snapshots_file: Optional[str] = None) -> lis
         path = os.path.join(config_dir, 'snapshots.yaml')
 
     if not os.path.exists(path):
-        # Return empty list if file doesn't exist
         return []
 
     # Load YAML
@@ -172,14 +168,13 @@ def load_plans(config_dir: str, plans_file: Optional[str] = None) -> list[Plan]:
         plans_file: Optional override path (relative to config_dir or absolute)
 
     Returns:
-        List of Plan objects
+        List of Plan objects (empty if file doesn't exist)
 
     Raises:
-        FileNotFoundError: If plans file doesn't exist
         ValueError: If YAML is malformed or validation fails
     """
     if not HAS_YAML:
-        raise ImportError("PyYAML is required for v1 features. Install with: pip install pyyaml")
+        raise ImportError("PyYAML is required for plan tracking. Install with: pip install pyyaml")
 
     # Resolve path
     if plans_file:
@@ -191,7 +186,6 @@ def load_plans(config_dir: str, plans_file: Optional[str] = None) -> list[Plan]:
         path = os.path.join(config_dir, 'plans.yaml')
 
     if not os.path.exists(path):
-        # Return empty list if file doesn't exist
         return []
 
     # Load YAML
@@ -238,9 +232,9 @@ def load_plans(config_dir: str, plans_file: Optional[str] = None) -> list[Plan]:
     return plans
 
 
-def load_v1_config(config_dir: str, settings: dict) -> dict:
+def load_personal_finance_config(config_dir: str, settings: dict) -> dict:
     """
-    Load all v1 configuration (accounts, snapshots, plans).
+    Load all personal finance configuration (accounts, snapshots, plans).
 
     Args:
         config_dir: Path to config directory
@@ -253,9 +247,8 @@ def load_v1_config(config_dir: str, settings: dict) -> dict:
         'accounts': [],
         'snapshots': [],
         'plans': [],
-        'v1_enabled': False,
-        'v1_errors': [],
-        'v1_warnings': [],
+        'errors': [],
+        'warnings': [],
     }
 
     try:
@@ -271,46 +264,25 @@ def load_v1_config(config_dir: str, settings: dict) -> dict:
         plans_file = settings.get('plans_file', 'config/plans.yaml')
         result['plans'] = load_plans(config_dir, plans_file)
 
-        # v1 is enabled if we have accounts
-        result['v1_enabled'] = len(result['accounts']) > 0
-
         # Validate plans against accounts
         for plan in result['plans']:
             errors = validate_plan_accounts(plan, result['accounts'])
-            result['v1_errors'].extend(errors)
+            result['errors'].extend(errors)
 
         # Validate snapshots reference existing accounts
         account_ids = {a.id for a in result['accounts']}
         for snapshot in result['snapshots']:
             if snapshot.account_id not in account_ids:
-                result['v1_warnings'].append(
+                result['warnings'].append(
                     f"Snapshot for account '{snapshot.account_id}' on {snapshot.date}: "
                     f"account does not exist in accounts.yaml"
                 )
 
     except ImportError as e:
-        # PyYAML not available - v1 features unavailable
-        result['v1_errors'].append(str(e))
+        # PyYAML not available
+        result['errors'].append(str(e))
     except Exception as e:
-        # Unexpected error loading v1 config
-        result['v1_errors'].append(f"Error loading v1 configuration: {e}")
+        # Unexpected error loading configuration
+        result['errors'].append(f"Error loading personal finance configuration: {e}")
 
     return result
-
-
-def is_v1_enabled(config: dict) -> bool:
-    """
-    Check if v1 features are enabled.
-
-    Args:
-        config: Loaded config dict
-
-    Returns:
-        True if v1 features should be enabled
-    """
-    # Explicit disable flag
-    if config.get('enable_v1_features') is False:
-        return False
-
-    # Auto-detect: v1 enabled if we have accounts
-    return len(config.get('accounts', [])) > 0
