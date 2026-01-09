@@ -390,6 +390,46 @@ def main():
         help='Output format: summary (default, human-readable), json (machine-readable)'
     )
 
+    # project subcommand
+    project_parser = subparsers.add_parser(
+        'project',
+        help='Project future cash flow based on recurring plans',
+        description='Forecast future account balances month-by-month based on current snapshots '
+                    'and active recurring investment/savings plans. Shows projected transactions, '
+                    'balances, and warns about potential negative balances.'
+    )
+    project_parser.add_argument(
+        'config',
+        nargs='?',
+        help='(deprecated, use --config) Path to config directory'
+    )
+    project_parser.add_argument(
+        '--config', '-c',
+        dest='config_dir',
+        help='Path to config directory (default: ./config)'
+    )
+    project_parser.add_argument(
+        '--settings', '-s',
+        default='settings.yaml',
+        help='Settings file name (default: settings.yaml)'
+    )
+    project_parser.add_argument(
+        '--months', '-m',
+        type=int,
+        default=12,
+        help='Number of months to project (default: 12)'
+    )
+    project_parser.add_argument(
+        '--start-date',
+        help='Start date for projection (YYYY-MM-DD format, default: today)'
+    )
+    project_parser.add_argument(
+        '--format', '-f',
+        choices=['summary', 'json'],
+        default='summary',
+        help='Output format: summary (default, human-readable), json (machine-readable)'
+    )
+
     # version subcommand
     subparsers.add_parser(
         'version',
@@ -482,6 +522,9 @@ def main():
     elif args.command == 'networth':
         from .commands import cmd_networth
         cmd_networth(args)
+    elif args.command == 'project':
+        from .commands import cmd_project
+        cmd_project(args)
     elif args.command == 'version':
         sha_display = GIT_SHA[:8] if GIT_SHA != 'unknown' else 'unknown'
         print(f"tally {VERSION} ({sha_display})")

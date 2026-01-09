@@ -131,6 +131,7 @@ class Plan:
         currency: Currency (must match both accounts)
         cadence: Frequency (monthly, biweekly, etc.)
         start_date: When the plan starts
+        end_date: Optional end date (plan stops after this date)
         status: Active or paused
     """
     id: str
@@ -142,6 +143,7 @@ class Plan:
     cadence: Cadence
     start_date: date
     status: PlanStatus
+    end_date: Optional[date] = None
 
     def __post_init__(self):
         """Validate plan data."""
@@ -167,13 +169,20 @@ class Plan:
         if isinstance(self.status, str):
             self.status = PlanStatus(self.status.lower())
 
-        # Ensure date is a date object
+        # Ensure dates are date objects
         if isinstance(self.start_date, str):
             from datetime import datetime
             try:
                 self.start_date = datetime.strptime(self.start_date, '%Y-%m-%d').date()
             except ValueError:
                 raise ValueError(f"Invalid date format: {self.start_date}. Use YYYY-MM-DD")
+
+        if self.end_date and isinstance(self.end_date, str):
+            from datetime import datetime
+            try:
+                self.end_date = datetime.strptime(self.end_date, '%Y-%m-%d').date()
+            except ValueError:
+                raise ValueError(f"Invalid date format: {self.end_date}. Use YYYY-MM-DD")
 
 
 # =============================================================================
