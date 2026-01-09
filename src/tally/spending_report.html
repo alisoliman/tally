@@ -127,6 +127,30 @@
                         </div>
                     </div>
                 </div>
+                <div class="card networth" data-testid="networth-card" v-if="netWorth">
+                    <h2>Net Worth</h2>
+                    <div class="amount">
+                        {{ formatCurrency(netWorth.total) }}
+                    </div>
+                    <div class="breakdown">
+                        <div class="breakdown-item" v-if="netWorth.as_of_date">
+                            <span class="name">As of</span>
+                            <span class="value">{{ formatDate(netWorth.as_of_date) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="netWorth.by_kind.cash">
+                            <span class="name">Cash</span>
+                            <span class="value">{{ formatCurrencyMap(netWorth.by_kind.cash) }}</span>
+                        </div>
+                        <div class="breakdown-item" v-if="netWorth.by_kind.investment">
+                            <span class="name">Investments</span>
+                            <span class="value">{{ formatCurrencyMap(netWorth.by_kind.investment) }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="name">Accounts</span>
+                            <span class="value">{{ netWorth.accounts.length }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Charts Section -->

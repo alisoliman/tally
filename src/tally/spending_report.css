@@ -1337,6 +1337,17 @@ section:nth-child(5) { animation-delay: 0.4s; }
     color: var(--accent-purple, #9b59b6);
 }
 
+/* Net Worth Card */
+.card.networth {
+    border-left: 3px solid var(--accent-green, #00b894);
+}
+.card.networth h2 {
+    color: var(--accent-green, #00b894);
+}
+.card.networth .amount {
+    color: var(--accent-green, #00b894);
+}
+
 /* Income Section */
 .income-section {
     margin-top: 2rem;

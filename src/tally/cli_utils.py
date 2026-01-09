@@ -130,6 +130,33 @@ def init_config(target_dir):
     else:
         files_skipped.append('config/views.rules')
 
+    # Write personal finance starter files (optional)
+    from .templates import STARTER_ACCOUNTS, STARTER_SNAPSHOTS, STARTER_PLANS
+
+    accounts_path = os.path.join(config_dir, 'accounts.yaml')
+    if not os.path.exists(accounts_path):
+        with open(accounts_path, 'w', encoding='utf-8') as f:
+            f.write(STARTER_ACCOUNTS)
+        files_created.append('config/accounts.yaml')
+    else:
+        files_skipped.append('config/accounts.yaml')
+
+    snapshots_path = os.path.join(config_dir, 'snapshots.yaml')
+    if not os.path.exists(snapshots_path):
+        with open(snapshots_path, 'w', encoding='utf-8') as f:
+            f.write(STARTER_SNAPSHOTS)
+        files_created.append('config/snapshots.yaml')
+    else:
+        files_skipped.append('config/snapshots.yaml')
+
+    plans_path = os.path.join(config_dir, 'plans.yaml')
+    if not os.path.exists(plans_path):
+        with open(plans_path, 'w', encoding='utf-8') as f:
+            f.write(STARTER_PLANS)
+        files_created.append('config/plans.yaml')
+    else:
+        files_skipped.append('config/plans.yaml')
+
     # Create .gitignore for data privacy
     gitignore_path = os.path.join(target_dir, '.gitignore')
     if not os.path.exists(gitignore_path):

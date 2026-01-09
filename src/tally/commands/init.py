@@ -86,6 +86,9 @@ def cmd_init(args):
         'config/merchants.rules': 'match transactions to categories',
         'config/views.rules': 'organize report by spending patterns',
         'config/settings.yaml': 'configure data sources',
+        'config/accounts.yaml': 'track account balances',
+        'config/snapshots.yaml': 'record balance snapshots',
+        'config/plans.yaml': 'define recurring plans',
     }
 
     for f, was_created in all_files:

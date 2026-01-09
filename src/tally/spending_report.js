@@ -964,6 +964,9 @@ createApp({
         // Investment total (401K, IRA - excluded from spending)
         const investmentTotal = computed(() => spendingData.value.investmentTotal || 0);
 
+        // Net worth (from account snapshots)
+        const netWorth = computed(() => spendingData.value.netWorth || null);
+
         // Uncategorized total
         const uncategorizedTotal = computed(() => {
             return sectionTotals.value.unknown || 0;
@@ -1527,6 +1530,17 @@ createApp({
             return currencyFormat.replace('{amount}', amount.toFixed(0));
         }
 
+        function formatCurrencyMap(currencyMap) {
+            // Format a map of currency -> amount, e.g. { USD: 5000, EUR: 3000 }
+            if (!currencyMap || Object.keys(currencyMap).length === 0) return '0';
+            const entries = Object.entries(currencyMap);
+            if (entries.length === 1) {
+                return formatCurrency(entries[0][1]);
+            }
+            // Multiple currencies: show them all
+            return entries.map(([curr, amt]) => `${formatCurrency(amt)}`).join(' + ');
+        }
+
         function formatDate(dateStr) {
             if (!dateStr) return '';
             // Handle MM/DD format from Python
@@ -1997,6 +2011,8 @@ createApp({
             transfersIn, transfersOut, transfersNet,
             incomeCount, transfersCount,
             investmentTotal,
+            // Personal finance
+            netWorth,
             // Filtered view card
             filteredViewTotals,
             // All transactions section
@@ -2004,7 +2020,7 @@ createApp({
             // Methods
             addFilter, removeFilter, toggleFilterMode, clearFilters, addMonthFilter,
             toggleExpand, toggleSection, toggleSort, sortedMerchants,
-            formatCurrency, formatDate, formatMonthLabel, formatPct, filterTypeChar,
+            formatCurrency, formatCurrencyMap, formatDate, formatMonthLabel, formatPct, filterTypeChar,
             highlightDescription,
             onSearchInput, onSearchKeydown, selectAutocompleteItem,
             toggleTheme

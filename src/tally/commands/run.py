@@ -160,6 +160,23 @@ def cmd_run(args):
     # Analyze
     stats = analyze_transactions(all_txns)
 
+    # Add personal finance data if available
+    accounts = config.get('accounts', [])
+    snapshots = config.get('snapshots', [])
+    if accounts and snapshots:
+        from ..finance_calcs import calculate_net_worth
+        net_worth = calculate_net_worth(accounts, snapshots)
+        stats['net_worth'] = {
+            'total': net_worth['total'],
+            'by_currency': net_worth['by_currency'],
+            'by_kind': net_worth['by_kind'],
+            'accounts': net_worth['accounts'],
+            'as_of_date': net_worth['as_of_date'].isoformat() if net_worth['as_of_date'] else None,
+            'missing_accounts': net_worth['missing_accounts'],
+        }
+    else:
+        stats['net_worth'] = None
+
     # Classify by user-defined views
     views_config = config.get('sections')
     if views_config:

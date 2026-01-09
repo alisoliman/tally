@@ -434,6 +434,8 @@ def write_summary_file_vue(stats, filepath, year=None, currency_format="${amount
         'transfersNet': stats.get('transfers_net', 0),  # in - out
         # Investments (401K, IRA - excluded from spending)
         'investmentTotal': stats.get('investment_total', 0),
+        # Personal Finance (net worth from account snapshots)
+        'netWorth': stats.get('net_worth'),  # Null if not configured
     }
 
     # Assemble final HTML
