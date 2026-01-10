@@ -1348,6 +1348,96 @@ section:nth-child(5) { animation-delay: 0.4s; }
     color: var(--accent-green, #00b894);
 }
 
+/* Projection Warnings */
+.projection-warnings {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+    border-radius: 4px;
+}
+
+.warning-item {
+    color: var(--text-primary);
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+/* Plans Grid */
+.plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0;
+}
+
+.plan-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 1.25rem;
+    transition: all 0.2s;
+    border-left: 3px solid var(--accent-blue);
+}
+
+.plan-card:hover {
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-card);
+}
+
+.plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.plan-type {
+    font-weight: 600;
+    color: var(--accent-blue);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.plan-cadence {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-table-header);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.plan-amount {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.plan-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.plan-detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.plan-detail-row .label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.plan-detail-row .value {
+    color: var(--text-primary);
+    font-family: monospace;
+}
+
 /* Income Section */
 .income-section {
     margin-top: 2rem;

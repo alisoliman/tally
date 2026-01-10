@@ -163,6 +163,8 @@ def cmd_run(args):
     # Add personal finance data if available
     accounts = config.get('accounts', [])
     snapshots = config.get('snapshots', [])
+    plans = config.get('plans', [])
+
     if accounts and snapshots:
         from ..finance_calcs import calculate_net_worth
         net_worth = calculate_net_worth(accounts, snapshots)
@@ -176,6 +178,63 @@ def cmd_run(args):
         }
     else:
         stats['net_worth'] = None
+
+    # Add projections if plans are configured
+    if accounts and snapshots and plans:
+        from datetime import date
+        from ..projections import project_cash_flow
+
+        # Project 12 months forward from today
+        projection_data = project_cash_flow(accounts, snapshots, plans, date.today(), months=12)
+
+        # Serialize projection data for JSON
+        stats['projections'] = {
+            'months': [
+                {
+                    'month': p['month'],
+                    'date': p['date'].isoformat(),
+                    'balances': p['balances'],
+                    'transactions': [
+                        {
+                            'date': txn['date'].isoformat(),
+                            'from_account': txn['from_account'],
+                            'to_account': txn['to_account'],
+                            'amount': txn['amount'],
+                            'plan_type': txn['plan_type'],
+                        }
+                        for txn in p['transactions']
+                    ],
+                    'net_worth_by_currency': p['net_worth_by_currency'],
+                    'net_worth_total': p['net_worth_total'],
+                }
+                for p in projection_data['projections']
+            ],
+            'warnings': projection_data['warnings'],
+        }
+    else:
+        stats['projections'] = None
+
+    # Include plans data for display
+    if plans:
+        from ..domain import PlanStatus
+        active_plans = [p for p in plans if p.status == PlanStatus.ACTIVE]
+        stats['plans'] = [
+            {
+                'id': p.id,
+                'type': p.type.value,
+                'from_account_id': p.from_account_id,
+                'to_account_id': p.to_account_id,
+                'amount': p.amount,
+                'currency': p.currency,
+                'cadence': p.cadence.value,
+                'start_date': p.start_date.isoformat(),
+                'status': p.status.value,
+                'end_date': p.end_date.isoformat() if p.end_date else None,
+            }
+            for p in active_plans
+        ]
+    else:
+        stats['plans'] = None
 
     # Classify by user-defined views
     views_config = config.get('sections')

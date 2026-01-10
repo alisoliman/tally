@@ -477,6 +477,8 @@ createApp({
         const isScrolled = ref(false);
         const isDarkTheme = ref(true);
         const chartsCollapsed = ref(false);
+        const projectionsCollapsed = ref(false);
+        const plansCollapsed = ref(false);
         const helpCollapsed = ref(true);
         const currentView = ref('category'); // 'category' or 'section'
         const groupByMode = ref('merchant'); // 'merchant' or 'subcategory'
@@ -486,11 +488,13 @@ createApp({
         const monthlyChart = ref(null);
         const categoryPieChart = ref(null);
         const categoryByMonthChart = ref(null);
+        const projectionChart = ref(null);
 
         // Chart instances
         let monthlyChartInstance = null;
         let pieChartInstance = null;
         let categoryMonthChartInstance = null;
+        let projectionChartInstance = null;
 
         // ========== COMPUTED ==========
 
@@ -966,6 +970,12 @@ createApp({
 
         // Net worth (from account snapshots)
         const netWorth = computed(() => spendingData.value.netWorth || null);
+
+        // Projections (cash flow forecast)
+        const projections = computed(() => spendingData.value.projections || null);
+
+        // Active plans
+        const activePlans = computed(() => spendingData.value.plans || null);
 
         // Uncategorized total
         const uncategorizedTotal = computed(() => {
@@ -1566,6 +1576,28 @@ createApp({
             return ((value / total) * 100).toFixed(1) + '%';
         }
 
+        function formatPlanType(type) {
+            const typeMap = {
+                'investment': 'Investment',
+                'savings': 'Savings',
+                'expense': 'Expense',
+                'transfer': 'Transfer',
+                'income': 'Income'
+            };
+            return typeMap[type] || type;
+        }
+
+        function formatCadence(cadence) {
+            const cadenceMap = {
+                'monthly': 'Monthly',
+                'quarterly': 'Quarterly',
+                'annual': 'Annual',
+                'weekly': 'Weekly',
+                'biweekly': 'Bi-weekly'
+            };
+            return cadenceMap[cadence] || cadence;
+        }
+
         function filterTypeChar(type) {
             return { category: 'c', subcategory: 'sc', merchant: 'm', month: 'd', tag: 't', text: 's' }[type] || '?';
         }
@@ -1841,7 +1873,74 @@ createApp({
                 });
             }
 
+            // Projection chart
+            if (projectionChart.value && projections.value) {
+                const ctx = projectionChart.value.getContext('2d');
+                projectionChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Net Worth',
+                            data: [],
+                            borderColor: '#00c9a7',
+                            backgroundColor: 'rgba(0, 201, 167, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        return 'Net Worth: ' + formatCurrency(context.parsed.y);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grace: '5%',
+                                ticks: {
+                                    callback: v => formatCurrencyShort(v)
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        }
+                    }
+                });
+                updateProjectionChart();
+            }
+
             updateCharts();
+        }
+
+        function updateProjectionChart() {
+            if (!projectionChartInstance || !projections.value) return;
+
+            const months = projections.value.months || [];
+            const labels = months.map(m => {
+                const [year, month] = m.month.split('-');
+                const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return `${monthNames[parseInt(month)-1]} ${year}`;
+            });
+            const data = months.map(m => m.net_worth_total || 0);
+
+            projectionChartInstance.data.labels = labels;
+            projectionChartInstance.data.datasets[0].data = data;
+            projectionChartInstance.update();
         }
 
         function updateCharts() {
@@ -1996,10 +2095,10 @@ createApp({
         return {
             // State
             activeFilters, expandedMerchants, extraFieldMatches, collapsedSections, searchQuery,
-            showAutocomplete, autocompleteIndex, isScrolled, isDarkTheme, chartsCollapsed, helpCollapsed,
+            showAutocomplete, autocompleteIndex, isScrolled, isDarkTheme, chartsCollapsed, projectionsCollapsed, plansCollapsed, helpCollapsed,
             currentView, groupByMode, sortConfig,
             // Refs
-            monthlyChart, categoryPieChart, categoryByMonthChart,
+            monthlyChart, categoryPieChart, categoryByMonthChart, projectionChart,
             // Computed
             spendingData, title, subtitle,
             visibleSections, filteredCategoryView, positiveCategoryView, subcategoryGroupedView, creditMerchants, filteredSectionView, hasSections,
@@ -2012,7 +2111,7 @@ createApp({
             incomeCount, transfersCount,
             investmentTotal,
             // Personal finance
-            netWorth,
+            netWorth, projections, activePlans,
             // Filtered view card
             filteredViewTotals,
             // All transactions section
@@ -2020,7 +2119,7 @@ createApp({
             // Methods
             addFilter, removeFilter, toggleFilterMode, clearFilters, addMonthFilter,
             toggleExpand, toggleSection, toggleSort, sortedMerchants,
-            formatCurrency, formatCurrencyMap, formatDate, formatMonthLabel, formatPct, filterTypeChar,
+            formatCurrency, formatCurrencyMap, formatDate, formatMonthLabel, formatPct, formatPlanType, formatCadence, filterTypeChar,
             highlightDescription,
             onSearchInput, onSearchKeydown, selectAutocompleteItem,
             toggleTheme

@@ -185,6 +185,68 @@
                 </div>
             </div>
 
+            <!-- Cash Flow Projection Section -->
+            <div class="chart-section" v-if="projections" data-testid="projection-section">
+                <div class="section-header" @click="projectionsCollapsed = !projectionsCollapsed">
+                    <h2>
+                        <span class="toggle">{{ projectionsCollapsed ? '▶' : '▼' }}</span>
+                        Cash Flow Forecast
+                    </h2>
+                </div>
+                <div class="section-content" :class="{ collapsed: projectionsCollapsed }">
+                    <div class="chart-container">
+                        <h3>12-Month Net Worth Projection</h3>
+                        <div class="chart-wrapper" style="height: 300px;">
+                            <canvas ref="projectionChart"></canvas>
+                        </div>
+                    </div>
+                    <div v-if="projections.warnings && projections.warnings.length > 0" class="projection-warnings">
+                        <div v-for="warning in projections.warnings" :key="warning" class="warning-item">
+                            ⚠️ {{ warning }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Plans Section -->
+            <div class="chart-section" v-if="activePlans && activePlans.length > 0" data-testid="plans-section">
+                <div class="section-header" @click="plansCollapsed = !plansCollapsed">
+                    <h2>
+                        <span class="toggle">{{ plansCollapsed ? '▶' : '▼' }}</span>
+                        Active Plans ({{ activePlans.length }})
+                    </h2>
+                </div>
+                <div class="section-content" :class="{ collapsed: plansCollapsed }">
+                    <div class="plans-grid">
+                        <div v-for="plan in activePlans" :key="plan.id" class="plan-card" :data-testid="'plan-' + plan.id">
+                            <div class="plan-header">
+                                <span class="plan-type">{{ formatPlanType(plan.type) }}</span>
+                                <span class="plan-cadence">{{ formatCadence(plan.cadence) }}</span>
+                            </div>
+                            <div class="plan-amount">{{ formatCurrency(plan.amount) }}</div>
+                            <div class="plan-details">
+                                <div class="plan-detail-row">
+                                    <span class="label">From:</span>
+                                    <span class="value">{{ plan.from_account_id }}</span>
+                                </div>
+                                <div class="plan-detail-row">
+                                    <span class="label">To:</span>
+                                    <span class="value">{{ plan.to_account_id }}</span>
+                                </div>
+                                <div class="plan-detail-row">
+                                    <span class="label">Started:</span>
+                                    <span class="value">{{ formatDate(plan.start_date) }}</span>
+                                </div>
+                                <div class="plan-detail-row" v-if="plan.end_date">
+                                    <span class="label">Ends:</span>
+                                    <span class="value">{{ formatDate(plan.end_date) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Unified View Toggle -->
             <div class="view-toggle">
                 <button :class="{ active: currentView === 'category' && groupByMode === 'merchant' }"
